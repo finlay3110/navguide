@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UCN Navigation &amp; Radar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,400;0,600;0,700;1,400&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#0E1626;
+    --navy:#1B2A5E;
+    --console:#152238;
+    --input:#1C2A46;
+    --cyan:#4FA8C9;
+    --orange:#DD7A2B;
+    --warn:#B23A3A;
+    --amber:#E39A3E;
+    --text:#EAF0FB;
+    --muted:#8FA0C0;
+
+    --c-nav: #EAF0FB;
+    --c-hazard: #9C74D6;
+    --c-objective: #1F8A55;
+    --c-hostile: #C41E3A;
+    --c-unknown: #E3C23E;
+    --c-mission: #3B5FE0;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Exo 2', sans-serif;
+    display:flex;
+    flex-direction:column;
+  }
+  h1,h2,h3,.orbitron{ font-family:'Orbitron', sans-serif; letter-spacing:0.03em; }
+
+  header.app-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:12px;
+    padding:16px 20px;
+    background:var(--navy);
+    border-bottom:1px solid rgba(255,255,255,0.08);
+  }
+  header.app-header h1{
+    margin:0;
+    font-size:1.3rem;
+    color:var(--text);
+  }
+  header.app-header h1 span{
+    display:block;
+    font-size:0.65rem;
+    color:var(--cyan);
+    font-family:'Exo 2', sans-serif;
+    letter-spacing:0.08em;
+    margin-top:2px;
+  }
+  .header-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+  .pill-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--console);
+    color:var(--text);
+    border:1px solid rgba(255,255,255,0.15);
+    padding:8px 14px;
+    border-radius:999px;
+    font-family:'Exo 2', sans-serif;
+    font-size:0.8rem;
+    cursor:pointer;
+    text-decoration:none;
+    transition:border-color .15s, background .15s;
+  }
+  .pill-btn:hover{ border-color:var(--cyan); background:#1a2a45; }
+  .pill-btn svg{ width:14px; height:14px; stroke:currentColor; fill:none; }
+
+  main{
+    flex:1;
+    padding:20px;
+    max-width:980px;
+    margin:0 auto;
+    width:100%;
+  }
+
+  nav.tabs{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-bottom:18px;
+  }
+  .tab-btn{
+    flex:1 1 120px;
+    background:var(--console);
+    border:1px solid rgba(255,255,255,0.1);
+    border-bottom:3px solid transparent;
+    color:var(--muted);
+    padding:10px 8px;
+    border-radius:8px 8px 0 0;
+    font-family:'Orbitron', sans-serif;
+    font-size:0.68rem;
+    letter-spacing:0.04em;
+    text-align:center;
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+  }
+  .tab-btn .dot{
+    width:10px; height:10px; border-radius:50%;
+    background:var(--muted);
+    box-shadow:0 0 0 2px rgba(255,255,255,0.08);
+  }
+  .tab-btn.active{
+    color:var(--text);
+    background:var(--input);
+  }
+  .tab-btn[data-cat="all"].active{ border-bottom-color: var(--cyan); }
+  .tab-btn[data-cat="nav"].active{ border-bottom-color: var(--c-nav); }
+  .tab-btn[data-cat="hazard"].active{ border-bottom-color: var(--c-hazard); }
+  .tab-btn[data-cat="objective"].active{ border-bottom-color: var(--c-objective); }
+  .tab-btn[data-cat="hostile"].active{ border-bottom-color: var(--c-hostile); }
+  .tab-btn[data-cat="unknown"].active{ border-bottom-color: var(--c-unknown); }
+  .tab-btn[data-cat="mission"].active{ border-bottom-color: var(--c-mission); }
+
+  .panel{
+    display:none;
+    background:var(--console);
+    border-radius:10px;
+    padding:18px;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  .panel.active{ display:block; }
+
+  .panel-title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:0 0 14px 0;
+    font-size:1rem;
+  }
+  .swatch{
+    width:14px; height:14px; border-radius:50%;
+    display:inline-block;
+    box-shadow:0 0 0 2px rgba(255,255,255,0.15);
+  }
+
+  form.wp-form{
+    display:grid;
+    grid-template-columns: 1fr 2fr;
+    gap:10px;
+    margin-bottom:18px;
+    background:var(--input);
+    padding:14px;
+    border-radius:8px;
+  }
+  form.wp-form.all-form{ grid-template-columns: 1fr 1fr; }
+  form.wp-form label{
+    display:flex;
+    flex-direction:column;
+    font-size:0.72rem;
+    color:var(--muted);
+    gap:4px;
+  }
+  form.wp-form input, form.wp-form select, form.wp-form textarea{
+    background:var(--bg);
+    border:1px solid rgba(255,255,255,0.15);
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:6px;
+    font-family:'Exo 2', sans-serif;
+    font-size:0.85rem;
+  }
+  form.wp-form input:focus, form.wp-form select:focus, form.wp-form textarea:focus{
+    outline:none;
+    border-color:var(--cyan);
+    box-shadow:0 0 0 2px rgba(79,168,201,0.25);
+  }
+  form.wp-form textarea{ resize:vertical; min-height:54px; grid-column:1 / -1; }
+  form.wp-form .full{ grid-column:1 / -1; }
+  form.wp-form .form-actions{ grid-column:1 / -1; display:flex; gap:10px; justify-content:flex-end; }
+
+  .btn{
+    background:var(--cyan);
+    color:#06131f;
+    border:none;
+    padding:9px 16px;
+    border-radius:6px;
+    font-family:'Orbitron', sans-serif;
+    font-size:0.7rem;
+    letter-spacing:0.04em;
+    cursor:pointer;
+  }
+  .btn.secondary{
+    background:transparent;
+    color:var(--muted);
+    border:1px solid rgba(255,255,255,0.2);
+  }
+  .btn.danger{ background:var(--warn); color:var(--text); }
+
+  ul.wp-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  .wp-item{
+    background:var(--input);
+    border-radius:8px;
+    border-left:4px solid var(--muted);
+    overflow:hidden;
+  }
+  .wp-item .row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 12px;
+    cursor:pointer;
+  }
+  .wp-item .row .num{
+    font-family:'Orbitron', sans-serif;
+    font-size:0.75rem;
+    color:var(--cyan);
+    min-width:34px;
+  }
+  .wp-item .row .title{ font-weight:600; flex:1; }
+  .wp-item .row .sector{ font-size:0.72rem; color:var(--muted); }
+  .wp-item .row .caret{ transition:transform .15s; color:var(--muted); }
+  .wp-item.open .row .caret{ transform:rotate(90deg); }
+  .wp-item .details{
+    display:none;
+    padding:0 12px 12px 12px;
+    font-size:0.85rem;
+    color:var(--text);
+    border-top:1px solid rgba(255,255,255,0.08);
+  }
+  .wp-item.open .details{ display:block; padding-top:10px; }
+  .wp-item .details .cat-tag{
+    display:inline-block;
+    font-size:0.65rem;
+    letter-spacing:0.05em;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .wp-item .details .actions{ margin-top:10px; display:flex; gap:8px; }
+  .wp-item .details .actions button{ font-size:0.65rem; padding:6px 10px; }
+
+  .empty-note{ color:var(--muted); font-size:0.85rem; padding:10px 0; }
+
+  /* Quick reference modal */
+  .modal-overlay{
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(4,8,16,0.75);
+    z-index:50;
+    align-items:flex-start;
+    justify-content:center;
+    padding:30px 14px;
+    overflow-y:auto;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal{
+    background:var(--console);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    max-width:760px;
+    width:100%;
+    padding:22px;
+  }
+  .modal-header{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .modal-header h2{ margin:0; font-size:1.05rem; }
+  .close-btn{
+    background:none; border:none; color:var(--muted);
+    font-size:1.3rem; cursor:pointer; line-height:1;
+  }
+  .close-btn:hover{ color:var(--text); }
+
+  .ref-section{ margin-bottom:22px; }
+  .ref-section h3{
+    font-size:0.8rem;
+    color:var(--cyan);
+    margin:0 0 10px 0;
+    text-transform:uppercase;
+  }
+
+  .ship-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(110px,1fr));
+    gap:10px;
+  }
+  .ship-card{
+    background:var(--input);
+    border-radius:8px;
+    padding:10px 8px;
+    text-align:center;
+    font-size:0.72rem;
+    color:var(--text);
+  }
+  .ship-icon-slot{
+    width:44px; height:44px;
+    margin:0 auto 8px auto;
+    border-radius:8px;
+    background:rgba(255,255,255,0.05);
+    border:1px dashed rgba(255,255,255,0.2);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--muted);
+  }
+  .ship-icon-slot svg{ width:22px; height:22px; stroke:var(--muted); fill:none; }
+
+  .colour-list{ display:flex; flex-direction:column; gap:10px; }
+  .colour-row{
+    display:flex; gap:10px; align-items:flex-start;
+    background:var(--input); padding:10px 12px; border-radius:8px;
+  }
+  .colour-chip{
+    width:16px; height:16px; border-radius:50%; flex-shrink:0; margin-top:2px;
+    box-shadow:0 0 0 2px rgba(255,255,255,0.12);
+  }
+  .colour-row .ctext strong{ display:block; font-size:0.8rem; }
+  .colour-row .ctext span{ font-size:0.75rem; color:var(--muted); }
+
+  .ordnance-row{
+    display:flex; gap:10px; align-items:center;
+    background:var(--input); padding:8px 12px; border-radius:8px;
+  }
+  .chevron{
+    width:0; height:0;
+    border-left:9px solid transparent;
+    border-right:9px solid transparent;
+    border-bottom:16px solid var(--muted);
+    flex-shrink:0;
+  }
+  .circle-marker{
+    width:14px; height:14px; border-radius:50%;
+    border:2px solid var(--text); background:transparent;
+    flex-shrink:0;
+  }
+
+  .compass-wrap{ display:flex; justify-content:center; padding:6px 0 4px 0; }
+  .compass-wrap svg text{ font-family:'Exo 2', sans-serif; }
+
+  footer.app-footer{
+    text-align:center;
+    padding:16px;
+    font-size:0.7rem;
+    color:var(--muted);
+    border-top:1px solid rgba(255,255,255,0.06);
+  }
+  footer.app-footer p{ margin:4px 0; }
+
+  @media (max-width:640px){
+    form.wp-form{ grid-template-columns:1fr; }
+    form.wp-form.all-form{ grid-template-columns:1fr; }
+    .tab-btn{ font-size:0.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>UCN NAVIGATION &amp; RADAR<span>WAYPOINT &amp; CONTACT REFERENCE</span></h1>
+  <div class="header-actions">
+    <button class="pill-btn" id="quickRefBtn" type="button">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
+      Quick Reference
+    </button>
+    <a class="pill-btn" href="https://toolportal.netlify.app">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/></svg>
+      Back to Tool Portal
+    </a>
+  </div>
+</header>
+
+<main>
+  <nav class="tabs" id="tabNav">
+    <button class="tab-btn active" data-cat="all"><span class="dot" style="background:#4FA8C9"></span>ALL</button>
+    <button class="tab-btn" data-cat="nav"><span class="dot" style="background:var(--c-nav)"></span>NAV / COURSE</button>
+    <button class="tab-btn" data-cat="hazard"><span class="dot" style="background:var(--c-hazard)"></span>HAZARDS</button>
+    <button class="tab-btn" data-cat="objective"><span class="dot" style="background:var(--c-objective)"></span>OBJECTIVES</button>
+    <button class="tab-btn" data-cat="hostile"><span class="dot" style="background:var(--c-hostile)"></span>HOSTILES</button>
+    <button class="tab-btn" data-cat="unknown"><span class="dot" style="background:var(--c-unknown)"></span>UNKNOWN</button>
+    <button class="tab-btn" data-cat="mission"><span class="dot" style="background:var(--c-mission)"></span>MISSION OBJ.</button>
+  </nav>
+
+  <!-- TAB 1: ALL -->
+  <section class="panel active" id="panel-all">
+    <h2 class="panel-title"><span class="swatch" style="background:#4FA8C9"></span>All Waypoints</h2>
+    <p class="empty-note" style="margin-top:-8px;">Every logged waypoint across all categories. Tap one to view its details. To add a new waypoint, use its category tab above.</p>
+    <ul class="wp-list" id="list-all"></ul>
+  </section>
+
+  <!-- TAB 2: NAV -->
+  <section class="panel" id="panel-nav">
+    <h2 class="panel-title"><span class="swatch" style="background:var(--c-nav)"></span>Navigation / Course Plotting</h2>
+    <form class="wp-form" data-cat="nav">
+      <label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>
+      <label>Title <input type="text" name="title" required placeholder="e.g. Turn point Alpha"></label>
+      <label>Sector <input type="text" name="sector" placeholder="optional"></label>
+      <label class="full">Description <textarea name="description" placeholder="What this waypoint means"></textarea></label>
+      <div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>
+    </form>
+    <ul class="wp-list" id="list-nav"></ul>
+  </section>
+
+  <!-- TAB 3: HAZARD -->
+  <section class="panel" id="panel-hazard">
+    <h2 class="panel-title"><span class="swatch" style="background:var(--c-hazard)"></span>Hazards</h2>
+    <form class="wp-form" data-cat="hazard">
+      <label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>
+      <label>Title <input type="text" name="title" required placeholder="e.g. Debris field"></label>
+      <label>Sector <input type="text" name="sector" placeholder="optional"></label>
+      <label class="full">Description <textarea name="description" placeholder="Hazard / area to avoid"></textarea></label>
+      <div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>
+    </form>
+    <ul class="wp-list" id="list-hazard"></ul>
+  </section>
+
+  <!-- TAB 4: OBJECTIVE -->
+  <section class="panel" id="panel-objective">
+    <h2 class="panel-title"><span class="swatch" style="background:var(--c-objective)"></span>Objectives</h2>
+    <form class="wp-form" data-cat="objective">
+      <label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>
+      <label>Title <input type="text" name="title" required placeholder="e.g. Rally point"></label>
+      <label>Sector <input type="text" name="sector" placeholder="optional"></label>
+      <label class="full">Description <textarea name="description" placeholder="What this objective means"></textarea></label>
+      <div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>
+    </form>
+    <ul class="wp-list" id="list-objective"></ul>
+  </section>
+
+  <!-- TAB 5: HOSTILE -->
+  <section class="panel" id="panel-hostile">
+    <h2 class="panel-title"><span class="swatch" style="background:var(--c-hostile)"></span>Hostiles / Hostile Area</h2>
+    <form class="wp-form" data-cat="hostile">
+      <label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>
+      <label>Title <input type="text" name="title" required placeholder="e.g. Hostile patrol"></label>
+      <label>Sector <input type="text" name="sector" placeholder="optional"></label>
+      <label class="full">Description <textarea name="description" placeholder="Threat details"></textarea></label>
+      <div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>
+    </form>
+    <ul class="wp-list" id="list-hostile"></ul>
+  </section>
+
+  <!-- TAB 6: UNKNOWN -->
+  <section class="panel" id="panel-unknown">
+    <h2 class="panel-title"><span class="swatch" style="background:var(--c-unknown)"></span>Unknown / Suspect / Investigate</h2>
+    <form class="wp-form" data-cat="unknown">
+      <label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>
+      <label>Title <input type="text" name="title" required placeholder="e.g. Unidentified signal"></label>
+      <label>Sector <input type="text" name="sector" placeholder="optional"></label>
+      <label class="full">Description <textarea name="description" placeholder="What needs investigating"></textarea></label>
+      <div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>
+    </form>
+    <ul class="wp-list" id="list-unknown"></ul>
+  </section>
+
+  <!-- TAB 7: MISSION OBJECTIVES -->
+  <section class="panel" id="panel-mission">
+    <h2 class="panel-title"><span class="swatch" style="background:var(--c-mission)"></span>Mission Objectives</h2>
+    <form class="wp-form" data-cat="mission">
+      <label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>
+      <label>Title <input type="text" name="title" required placeholder="e.g. Primary mission objective"></label>
+      <label>Sector <input type="text" name="sector" placeholder="optional"></label>
+      <label class="full">Description <textarea name="description" placeholder="What this mission objective is"></textarea></label>
+      <div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>
+    </form>
+    <ul class="wp-list" id="list-mission"></ul>
+  </section>
+</main>
+
+<footer class="app-footer">
+  <p>Designed by Lt Fin "Tetra"</p>
+  <p>Unofficial fan-made tool for the UCN community. Not affiliated with or endorsed by Bridge Command / The London Space Elevator Limited.</p>
+</footer>
+
+<!-- Quick Reference Modal -->
+<div class="modal-overlay" id="refOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Quick Reference</h2>
+      <button class="close-btn" id="closeRefBtn" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="ref-section">
+      <h3>Ship Types</h3>
+      <div class="ship-grid" id="shipGrid"></div>
+    </div>
+
+    <div class="ref-section">
+      <h3>Radar Colour Meanings</h3>
+      <div class="colour-list">
+        <div class="colour-row">
+          <span class="colour-chip" style="background:#C41E3A"></span>
+          <span class="ctext"><strong>RED — Gravity</strong><span>Planets, asteroids, wormholes, black holes, ships at warp speed</span></span>
+        </div>
+        <div class="colour-row">
+          <span class="colour-chip" style="background:#1F8A55"></span>
+          <span class="ctext"><strong>GREEN — Biological / Thermal</strong><span>Explosions, ships, stations, planets</span></span>
+        </div>
+        <div class="colour-row">
+          <span class="colour-chip" style="background:#4FA8C9"></span>
+          <span class="ctext"><strong>BLUE — Electrical</strong><span>Ships, beam fire, mines, nebula</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ref-section">
+      <h3>Scanned Ship Colour Meaning</h3>
+      <div class="colour-list">
+        <div class="colour-row">
+          <span class="colour-chip" style="background:#4FA8C9"></span>
+          <span class="ctext"><strong>BLUE</strong><span>UCN</span></span>
+        </div>
+        <div class="colour-row">
+          <span class="colour-chip" style="background:#1F8A55"></span>
+          <span class="ctext"><strong>GREEN</strong><span>Allied</span></span>
+        </div>
+        <div class="colour-row">
+          <span class="colour-chip" style="background:#C41E3A"></span>
+          <span class="ctext"><strong>RED</strong><span>Hostile</span></span>
+        </div>
+        <div class="colour-row">
+          <span class="colour-chip" style="background:#E3C23E"></span>
+          <span class="ctext"><strong>YELLOW</strong><span>Unknown / UVP</span></span>
+        </div>
+        <div class="colour-row">
+          <span class="colour-chip" style="background:#C9CDD6"></span>
+          <span class="ctext"><strong>GREY / WHITE</strong><span>Unscanned</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ref-section">
+      <h3>Ordnance Type Colours</h3>
+      <div class="colour-list">
+        <div class="ordnance-row">
+          <span class="chevron" style="border-bottom-color:#D4AF37"></span>
+          <span class="ctext"><strong>Gold Chevron</strong><span> — Torpedo (tracker)</span></span>
+        </div>
+        <div class="ordnance-row">
+          <span class="chevron" style="border-bottom-color:#C9CDD6"></span>
+          <span class="ctext"><strong>Grey / White Chevron</strong><span> — HVLI (Slug)</span></span>
+        </div>
+        <div class="ordnance-row">
+          <span class="chevron" style="border-bottom-color:#DD7A2B"></span>
+          <span class="ctext"><strong>Orange Chevron</strong><span> — Nuke</span></span>
+        </div>
+        <div class="ordnance-row">
+          <span class="chevron" style="border-bottom-color:#9C74D6"></span>
+          <span class="ctext"><strong>Purple Chevron</strong><span> — EMP</span></span>
+        </div>
+        <div class="ordnance-row">
+          <span class="circle-marker"></span>
+          <span class="ctext"><strong>White Circle</strong><span> — Mine</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ref-section">
+      <h3>Compass Bearings</h3>
+      <div class="compass-wrap" id="compassWrap"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  var CATEGORIES = {
+    nav:       { label:'Navigation / Course Plotting', color:'var(--c-nav)',       hex:'#EAF0FB' },
+    hazard:    { label:'Hazards',                      color:'var(--c-hazard)',   hex:'#9C74D6' },
+    objective: { label:'Objectives',                   color:'var(--c-objective)',hex:'#1F8A55' },
+    hostile:   { label:'Hostiles / Hostile Area',       color:'var(--c-hostile)',  hex:'#C41E3A' },
+    unknown:   { label:'Unknown / Suspect / Investigate',color:'var(--c-unknown)',hex:'#E3C23E' },
+    mission:   { label:'Mission Objectives',            color:'var(--c-mission)',  hex:'#3B5FE0' }
+  };
+
+  var STORAGE_KEY = 'ucn_nav_radar_waypoints';
+  var waypoints = [];
+
+  function loadWaypoints(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      waypoints = raw ? JSON.parse(raw) : [];
+    }catch(e){
+      waypoints = [];
+    }
+  }
+  function saveWaypoints(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(waypoints));
+    }catch(e){ /* storage unavailable, continue in-memory only */ }
+  }
+
+  function escapeHtml(str){
+    return String(str || '').replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+
+  function renderList(cat){
+    var containerId = cat === 'all' ? 'list-all' : 'list-' + cat;
+    var container = document.getElementById(containerId);
+    if(!container) return;
+
+    var items = cat === 'all'
+      ? waypoints.slice()
+      : waypoints.filter(function(w){ return w.category === cat; });
+
+    items.sort(function(a,b){
+      return (a.number || '').localeCompare(b.number || '', undefined, {numeric:true});
+    });
+
+    if(items.length === 0){
+      container.innerHTML = '<li class="empty-note">No waypoints logged yet.</li>';
+      return;
+    }
+
+    container.innerHTML = items.map(function(w){
+      var catInfo = CATEGORIES[w.category];
+      var hex = catInfo ? catInfo.hex : '#8FA0C0';
+      var catLabel = catInfo ? catInfo.label : '';
+      return (
+        '<li class="wp-item" data-id="' + w.id + '" style="border-left-color:' + hex + '">' +
+          '<div class="row">' +
+            '<span class="num">#' + escapeHtml(w.number) + '</span>' +
+            '<span class="title">' + escapeHtml(w.title) + '</span>' +
+            (w.sector ? '<span class="sector">' + escapeHtml(w.sector) + '</span>' : '') +
+            '<span class="caret">&#9656;</span>' +
+          '</div>' +
+          '<div class="details">' +
+            (cat === 'all' ? '<span class="cat-tag">' + escapeHtml(catLabel) + '</span><br>' : '') +
+            '<div>' + (w.description ? escapeHtml(w.description) : '<em>No description provided.</em>') + '</div>' +
+            '<div class="actions">' +
+              '<button class="btn secondary btn-delete" type="button">Delete</button>' +
+            '</div>' +
+          '</div>' +
+        '</li>'
+      );
+    }).join('');
+  }
+
+  function renderAllLists(){
+    renderList('all');
+    Object.keys(CATEGORIES).forEach(renderList);
+  }
+
+  function addWaypoint(cat, data){
+    waypoints.push({
+      id: 'wp_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+      category: cat,
+      number: data.number.trim(),
+      title: data.title.trim(),
+      sector: (data.sector || '').trim(),
+      description: (data.description || '').trim()
+    });
+    saveWaypoints();
+    renderAllLists();
+  }
+
+  function deleteWaypoint(id){
+    waypoints = waypoints.filter(function(w){ return w.id !== id; });
+    saveWaypoints();
+    renderAllLists();
+  }
+
+  // Tab switching
+  var tabButtons = document.querySelectorAll('.tab-btn');
+  tabButtons.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var cat = btn.getAttribute('data-cat');
+      tabButtons.forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+      document.getElementById('panel-' + cat).classList.add('active');
+    });
+  });
+
+  // Forms
+  document.querySelectorAll('form.wp-form').forEach(function(form){
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var cat = form.getAttribute('data-cat');
+      var data = {
+        number: form.number.value,
+        title: form.title.value,
+        sector: form.sector.value,
+        description: form.description.value
+      };
+      if(!data.number.trim() || !data.title.trim()) return;
+      addWaypoint(cat, data);
+      form.reset();
+    });
+  });
+
+  // Click to expand / delete (event delegation across all lists)
+  document.querySelectorAll('ul.wp-list').forEach(function(list){
+    list.addEventListener('click', function(e){
+      var deleteBtn = e.target.closest('.btn-delete');
+      if(deleteBtn){
+        var item = e.target.closest('.wp-item');
+        if(item) deleteWaypoint(item.getAttribute('data-id'));
+        return;
+      }
+      var row = e.target.closest('.row');
+      if(row){
+        var wpItem = row.closest('.wp-item');
+        wpItem.classList.toggle('open');
+      }
+    });
+  });
+
+  // Quick Reference modal
+  var refOverlay = document.getElementById('refOverlay');
+  document.getElementById('quickRefBtn').addEventListener('click', function(){
+    refOverlay.classList.add('open');
+  });
+  document.getElementById('closeRefBtn').addEventListener('click', function(){
+    refOverlay.classList.remove('open');
+  });
+  refOverlay.addEventListener('click', function(e){
+    if(e.target === refOverlay) refOverlay.classList.remove('open');
+  });
+
+  // Ship types quick reference (icon slots ready for future upload)
+  var SHIP_TYPES = ['Drone','Gunship','Shuttle','Frigate','Destroyer','Cruiser','Battle Cruiser','Battleship','Carrier','Freighter'];
+  var shipGrid = document.getElementById('shipGrid');
+  shipGrid.innerHTML = SHIP_TYPES.map(function(name){
+    return (
+      '<div class="ship-card">' +
+        '<div class="ship-icon-slot"><svg viewBox="0 0 24 24"><path d="M3 16l9-11 9 11"/><path d="M5 16h14l-2 4H7z"/></svg></div>' +
+        escapeHtml(name) +
+      '</div>'
+    );
+  }).join('');
+
+  // Compass (0 - 340 in 20 degree increments)
+  var compassWrap = document.getElementById('compassWrap');
+  (function buildCompass(){
+    var size = 220, cx = size/2, cy = size/2, r = 95, tickOuter = r, tickInner = r - 10, labelR = r - 26;
+    var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">';
+    svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#4FA8C9" stroke-width="1.5" opacity="0.5"/>';
+    svg += '<circle cx="' + cx + '" cy="' + cy + '" r="4" fill="#4FA8C9"/>';
+    for(var deg = 0; deg < 360; deg += 20){
+      var rad = (deg - 90) * Math.PI / 180;
+      var x1 = cx + tickOuter * Math.cos(rad);
+      var y1 = cy + tickOuter * Math.sin(rad);
+      var x2 = cx + tickInner * Math.cos(rad);
+      var y2 = cy + tickInner * Math.sin(rad);
+      var lx = cx + labelR * Math.cos(rad);
+      var ly = cy + labelR * Math.sin(rad);
+      var major = (deg % 90 === 0);
+      svg += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="' + (major ? '#DD7A2B' : '#8FA0C0') + '" stroke-width="' + (major ? 2 : 1) + '"/>';
+      svg += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="' + (major ? '#EAF0FB' : '#8FA0C0') + '" font-size="10" text-anchor="middle" dominant-baseline="middle">' + deg + '</text>';
+    }
+    svg += '</svg>';
+    compassWrap.innerHTML = svg;
+  })();
+
+  loadWaypoints();
+  renderAllLists();
+})();
+</script>
+
+</body>
+</html>
