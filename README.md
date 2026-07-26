@@ -29,7 +29,7 @@ Use these to move a log between devices or browsers, or to back it up before cle
 
 Accessible via the "Quick Reference" button in the header. Closes with Escape or by clicking outside it. Includes:
 
-- **Ship types** — Drone, Gunship, Shuttle, Frigate, Destroyer, Cruiser, Battle Cruiser, Battleship, Carrier, Freighter. Icon slots are placeholders ready for custom ship icons to be added later.
+- **Ship types** — Drone, Fighter, Gunship, Shuttle, Frigate, Destroyer, Cruiser, Battle Cruiser, Battleship, Carrier, Freighter, Small Station and Arrow, each with its silhouette. Gunship still shows the dashed placeholder slot, as no gunship artwork has been supplied yet; drop one in and it picks up the same treatment as the rest.
 - **Radar colour meanings** — Red (Gravity), Green (Biological/Thermal), Blue (Electrical), with what each shows up on radar.
 - **Scanned ship colour meaning** — Blue (UCN), Green (Allied), Red (Hostile), Yellow (Unknown/UVP), Grey/White (Unscanned).
 - **Ordnance type colours** — Gold chevron (Torpedo/tracker), Grey/white chevron (HVLI/Slug), Orange chevron (Nuke), Purple chevron (EMP), White circle (Mine).
@@ -48,6 +48,11 @@ Accessible via the "Quick Reference" button in the header. Closes with Escape or
 - Waypoint data is stored locally in the browser (per device/browser), so it will persist between visits on the same device but won't sync across devices. If the browser blocks local storage, a banner warns you that the log won't survive closing the page.
 - Stored data carries a schema version, and logs saved by older versions of the tool are migrated automatically on load.
 - Matches the standard UCN dark navy visual theme used across the rest of the tool suite.
+- Ship icons are inlined into `index.html` as SVG rather than loaded as separate files, so the tool remains a single self-contained page with no build step. They are drawn with `currentColor`, so they follow the theme's text colour instead of carrying their own.
+
+### Adding or replacing a ship icon
+
+Add an entry to the `SHIP_ICONS` map in `index.html` and reference its key from `SHIP_TYPES`. An entry with no `icon` key renders the dashed placeholder slot. Icons exported from Inkscape need two things done first: strip the editor metadata, and set the `viewBox` to the artwork's real bounding box — several of the supplied files shipped with a `viewBox` that cropped part of the drawing.
 
 ---
 
