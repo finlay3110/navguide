@@ -3,8 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Fan-made waypoint log and radar quick reference for the United Confederation Navy (UCN) community. Log waypoints by category and export them as JSON.">
 <title>UCN Navigation &amp; Radar</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230E1626' stroke='%234FA8C9' stroke-width='2'/%3E%3Cpath d='M16 7l4 9-4 9-4-9z' fill='%23DD7A2B'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,400;0,600;0,700;1,400&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -38,7 +41,23 @@
     display:flex;
     flex-direction:column;
   }
+  body.modal-open{ overflow:hidden; }
   h1,h2,h3,.orbitron{ font-family:'Orbitron', sans-serif; letter-spacing:0.03em; }
+
+  .sr-only{
+    position:absolute;
+    width:1px; height:1px;
+    padding:0; margin:-1px;
+    overflow:hidden;
+    clip:rect(0 0 0 0);
+    white-space:nowrap;
+    border:0;
+  }
+
+  :focus-visible{
+    outline:2px solid var(--cyan);
+    outline-offset:2px;
+  }
 
   header.app-header{
     display:flex;
@@ -91,6 +110,28 @@
     width:100%;
   }
 
+  .banner{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    background:rgba(227,154,62,0.12);
+    border:1px solid var(--amber);
+    color:var(--amber);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:0.78rem;
+    margin-bottom:14px;
+  }
+  .banner[hidden]{ display:none; }
+
+  .notice{
+    min-height:18px;
+    font-size:0.75rem;
+    color:var(--cyan);
+    margin:0 0 12px 0;
+  }
+  .notice.warn{ color:var(--amber); }
+
   nav.tabs{
     display:flex;
     flex-wrap:wrap;
@@ -120,26 +161,27 @@
     background:var(--muted);
     box-shadow:0 0 0 2px rgba(255,255,255,0.08);
   }
-  .tab-btn.active{
+  .tab-btn[aria-selected="true"]{
     color:var(--text);
     background:var(--input);
   }
-  .tab-btn[data-cat="all"].active{ border-bottom-color: var(--cyan); }
-  .tab-btn[data-cat="nav"].active{ border-bottom-color: var(--c-nav); }
-  .tab-btn[data-cat="hazard"].active{ border-bottom-color: var(--c-hazard); }
-  .tab-btn[data-cat="objective"].active{ border-bottom-color: var(--c-objective); }
-  .tab-btn[data-cat="hostile"].active{ border-bottom-color: var(--c-hostile); }
-  .tab-btn[data-cat="unknown"].active{ border-bottom-color: var(--c-unknown); }
-  .tab-btn[data-cat="mission"].active{ border-bottom-color: var(--c-mission); }
+  .tab-btn[data-cat="all"][aria-selected="true"]{ border-bottom-color: var(--cyan); }
+  .tab-btn[data-cat="nav"][aria-selected="true"]{ border-bottom-color: var(--c-nav); }
+  .tab-btn[data-cat="hazard"][aria-selected="true"]{ border-bottom-color: var(--c-hazard); }
+  .tab-btn[data-cat="objective"][aria-selected="true"]{ border-bottom-color: var(--c-objective); }
+  .tab-btn[data-cat="hostile"][aria-selected="true"]{ border-bottom-color: var(--c-hostile); }
+  .tab-btn[data-cat="unknown"][aria-selected="true"]{ border-bottom-color: var(--c-unknown); }
+  .tab-btn[data-cat="mission"][aria-selected="true"]{ border-bottom-color: var(--c-mission); }
 
   .panel{
-    display:none;
+    display:block;
     background:var(--console);
     border-radius:10px;
     padding:18px;
     border:1px solid rgba(255,255,255,0.08);
   }
-  .panel.active{ display:block; }
+  .panel[hidden]{ display:none; }
+  .panel:focus{ outline:none; }
 
   .panel-title{
     display:flex;
@@ -163,7 +205,6 @@
     padding:14px;
     border-radius:8px;
   }
-  form.wp-form.all-form{ grid-template-columns: 1fr 1fr; }
   form.wp-form label{
     display:flex;
     flex-direction:column;
@@ -189,6 +230,14 @@
   form.wp-form .full{ grid-column:1 / -1; }
   form.wp-form .form-actions{ grid-column:1 / -1; display:flex; gap:10px; justify-content:flex-end; }
 
+  .form-note{
+    margin:-10px 0 14px 0;
+    font-size:0.72rem;
+    color:var(--cyan);
+    min-height:16px;
+  }
+  .form-note.warn{ color:var(--amber); }
+
   .btn{
     background:var(--cyan);
     color:#06131f;
@@ -205,6 +254,7 @@
     color:var(--muted);
     border:1px solid rgba(255,255,255,0.2);
   }
+  .btn.secondary:hover{ color:var(--text); border-color:var(--cyan); }
   .btn.danger{ background:var(--warn); color:var(--text); }
 
   ul.wp-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
@@ -214,23 +264,30 @@
     border-left:4px solid var(--muted);
     overflow:hidden;
   }
-  .wp-item .row{
+  button.row{
     display:flex;
     align-items:center;
     gap:10px;
     padding:10px 12px;
     cursor:pointer;
+    width:100%;
+    background:none;
+    border:none;
+    color:inherit;
+    font:inherit;
+    text-align:left;
   }
-  .wp-item .row .num{
+  button.row:hover{ background:rgba(255,255,255,0.04); }
+  button.row .num{
     font-family:'Orbitron', sans-serif;
     font-size:0.75rem;
     color:var(--cyan);
     min-width:34px;
   }
-  .wp-item .row .title{ font-weight:600; flex:1; }
-  .wp-item .row .sector{ font-size:0.72rem; color:var(--muted); }
-  .wp-item .row .caret{ transition:transform .15s; color:var(--muted); }
-  .wp-item.open .row .caret{ transform:rotate(90deg); }
+  button.row .title{ font-weight:600; flex:1; }
+  button.row .sector{ font-size:0.72rem; color:var(--muted); }
+  button.row .caret{ transition:transform .15s; color:var(--muted); }
+  .wp-item.open button.row .caret{ transform:rotate(90deg); }
   .wp-item .details{
     display:none;
     padding:0 12px 12px 12px;
@@ -240,14 +297,16 @@
   }
   .wp-item.open .details{ display:block; padding-top:10px; }
   .wp-item .details .cat-tag{
-    display:inline-block;
+    display:block;
     font-size:0.65rem;
     letter-spacing:0.05em;
     color:var(--muted);
     margin-bottom:6px;
   }
-  .wp-item .details .actions{ margin-top:10px; display:flex; gap:8px; }
+  .wp-item .details .actions{ margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .wp-item .details .actions button{ font-size:0.65rem; padding:6px 10px; }
+  .wp-item .details .confirm-text{ font-size:0.75rem; color:var(--amber); }
+  .wp-item form.wp-form{ margin:0; background:rgba(0,0,0,0.2); }
 
   .empty-note{ color:var(--muted); font-size:0.85rem; padding:10px 0; }
 
@@ -357,7 +416,6 @@
 
   @media (max-width:640px){
     form.wp-form{ grid-template-columns:1fr; }
-    form.wp-form.all-form{ grid-template-columns:1fr; }
     .tab-btn{ font-size:0.6rem; }
   }
 </style>
@@ -367,6 +425,15 @@
 <header class="app-header">
   <h1>UCN NAVIGATION &amp; RADAR<span>WAYPOINT &amp; CONTACT REFERENCE</span></h1>
   <div class="header-actions">
+    <button class="pill-btn" id="exportBtn" type="button">
+      <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+      Export
+    </button>
+    <button class="pill-btn" id="importBtn" type="button">
+      <svg viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M4 20h16"/></svg>
+      Import
+    </button>
+    <input type="file" id="importInput" accept="application/json,.json" class="sr-only" tabindex="-1" aria-hidden="true">
     <button class="pill-btn" id="quickRefBtn" type="button">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
       Quick Reference
@@ -379,100 +446,27 @@
 </header>
 
 <main>
-  <nav class="tabs" id="tabNav">
-    <button class="tab-btn active" data-cat="all"><span class="dot" style="background:#4FA8C9"></span>ALL</button>
-    <button class="tab-btn" data-cat="nav"><span class="dot" style="background:var(--c-nav)"></span>NAV / COURSE</button>
-    <button class="tab-btn" data-cat="hazard"><span class="dot" style="background:var(--c-hazard)"></span>HAZARDS</button>
-    <button class="tab-btn" data-cat="objective"><span class="dot" style="background:var(--c-objective)"></span>OBJECTIVES</button>
-    <button class="tab-btn" data-cat="hostile"><span class="dot" style="background:var(--c-hostile)"></span>HOSTILES</button>
-    <button class="tab-btn" data-cat="unknown"><span class="dot" style="background:var(--c-unknown)"></span>UNKNOWN</button>
-    <button class="tab-btn" data-cat="mission"><span class="dot" style="background:var(--c-mission)"></span>MISSION OBJ.</button>
+  <div class="banner" id="storageBanner" hidden>
+    <span>Local storage is unavailable in this browser, so waypoints will be lost when you close this page. Use <strong>Export</strong> to save your log before leaving.</span>
+  </div>
+
+  <p class="notice" id="notice" role="status" aria-live="polite"></p>
+
+  <nav class="tabs" id="tabNav" role="tablist" aria-label="Waypoint categories">
+    <button class="tab-btn" type="button" role="tab" id="tab-all" data-cat="all"
+            aria-selected="true" aria-controls="panel-all" tabindex="0">
+      <span class="dot" style="background:#4FA8C9"></span>ALL
+    </button>
   </nav>
 
   <!-- TAB 1: ALL -->
-  <section class="panel active" id="panel-all">
+  <section class="panel" id="panel-all" role="tabpanel" aria-labelledby="tab-all" tabindex="0">
     <h2 class="panel-title"><span class="swatch" style="background:#4FA8C9"></span>All Waypoints</h2>
-    <p class="empty-note" style="margin-top:-8px;">Every logged waypoint across all categories. Tap one to view its details. To add a new waypoint, use its category tab above.</p>
-    <ul class="wp-list" id="list-all"></ul>
+    <p class="empty-note" style="margin-top:-8px;">Every logged waypoint across all categories. Select one to view its details. To add a new waypoint, use its category tab above.</p>
+    <ul class="wp-list" id="list-all" aria-label="All waypoints"></ul>
   </section>
 
-  <!-- TAB 2: NAV -->
-  <section class="panel" id="panel-nav">
-    <h2 class="panel-title"><span class="swatch" style="background:var(--c-nav)"></span>Navigation / Course Plotting</h2>
-    <form class="wp-form" data-cat="nav">
-      <label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>
-      <label>Title <input type="text" name="title" required placeholder="e.g. Turn point Alpha"></label>
-      <label>Sector <input type="text" name="sector" placeholder="optional"></label>
-      <label class="full">Description <textarea name="description" placeholder="What this waypoint means"></textarea></label>
-      <div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>
-    </form>
-    <ul class="wp-list" id="list-nav"></ul>
-  </section>
-
-  <!-- TAB 3: HAZARD -->
-  <section class="panel" id="panel-hazard">
-    <h2 class="panel-title"><span class="swatch" style="background:var(--c-hazard)"></span>Hazards</h2>
-    <form class="wp-form" data-cat="hazard">
-      <label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>
-      <label>Title <input type="text" name="title" required placeholder="e.g. Debris field"></label>
-      <label>Sector <input type="text" name="sector" placeholder="optional"></label>
-      <label class="full">Description <textarea name="description" placeholder="Hazard / area to avoid"></textarea></label>
-      <div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>
-    </form>
-    <ul class="wp-list" id="list-hazard"></ul>
-  </section>
-
-  <!-- TAB 4: OBJECTIVE -->
-  <section class="panel" id="panel-objective">
-    <h2 class="panel-title"><span class="swatch" style="background:var(--c-objective)"></span>Objectives</h2>
-    <form class="wp-form" data-cat="objective">
-      <label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>
-      <label>Title <input type="text" name="title" required placeholder="e.g. Rally point"></label>
-      <label>Sector <input type="text" name="sector" placeholder="optional"></label>
-      <label class="full">Description <textarea name="description" placeholder="What this objective means"></textarea></label>
-      <div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>
-    </form>
-    <ul class="wp-list" id="list-objective"></ul>
-  </section>
-
-  <!-- TAB 5: HOSTILE -->
-  <section class="panel" id="panel-hostile">
-    <h2 class="panel-title"><span class="swatch" style="background:var(--c-hostile)"></span>Hostiles / Hostile Area</h2>
-    <form class="wp-form" data-cat="hostile">
-      <label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>
-      <label>Title <input type="text" name="title" required placeholder="e.g. Hostile patrol"></label>
-      <label>Sector <input type="text" name="sector" placeholder="optional"></label>
-      <label class="full">Description <textarea name="description" placeholder="Threat details"></textarea></label>
-      <div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>
-    </form>
-    <ul class="wp-list" id="list-hostile"></ul>
-  </section>
-
-  <!-- TAB 6: UNKNOWN -->
-  <section class="panel" id="panel-unknown">
-    <h2 class="panel-title"><span class="swatch" style="background:var(--c-unknown)"></span>Unknown / Suspect / Investigate</h2>
-    <form class="wp-form" data-cat="unknown">
-      <label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>
-      <label>Title <input type="text" name="title" required placeholder="e.g. Unidentified signal"></label>
-      <label>Sector <input type="text" name="sector" placeholder="optional"></label>
-      <label class="full">Description <textarea name="description" placeholder="What needs investigating"></textarea></label>
-      <div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>
-    </form>
-    <ul class="wp-list" id="list-unknown"></ul>
-  </section>
-
-  <!-- TAB 7: MISSION OBJECTIVES -->
-  <section class="panel" id="panel-mission">
-    <h2 class="panel-title"><span class="swatch" style="background:var(--c-mission)"></span>Mission Objectives</h2>
-    <form class="wp-form" data-cat="mission">
-      <label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>
-      <label>Title <input type="text" name="title" required placeholder="e.g. Primary mission objective"></label>
-      <label>Sector <input type="text" name="sector" placeholder="optional"></label>
-      <label class="full">Description <textarea name="description" placeholder="What this mission objective is"></textarea></label>
-      <div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>
-    </form>
-    <ul class="wp-list" id="list-mission"></ul>
-  </section>
+  <!-- Category panels are generated from CATEGORIES on load -->
 </main>
 
 <footer class="app-footer">
@@ -482,10 +476,10 @@
 
 <!-- Quick Reference Modal -->
 <div class="modal-overlay" id="refOverlay">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="refTitle">
     <div class="modal-header">
-      <h2>Quick Reference</h2>
-      <button class="close-btn" id="closeRefBtn" aria-label="Close">&times;</button>
+      <h2 id="refTitle">Quick Reference</h2>
+      <button class="close-btn" id="closeRefBtn" type="button" aria-label="Close quick reference">&times;</button>
     </div>
 
     <div class="ref-section">
@@ -574,45 +568,255 @@
 <script>
 (function(){
   var CATEGORIES = {
-    nav:       { label:'Navigation / Course Plotting', color:'var(--c-nav)',       hex:'#EAF0FB' },
-    hazard:    { label:'Hazards',                      color:'var(--c-hazard)',   hex:'#9C74D6' },
-    objective: { label:'Objectives',                   color:'var(--c-objective)',hex:'#1F8A55' },
-    hostile:   { label:'Hostiles / Hostile Area',       color:'var(--c-hostile)',  hex:'#C41E3A' },
-    unknown:   { label:'Unknown / Suspect / Investigate',color:'var(--c-unknown)',hex:'#E3C23E' },
-    mission:   { label:'Mission Objectives',            color:'var(--c-mission)',  hex:'#3B5FE0' }
+    nav: {
+      label:'Navigation / Course Plotting', short:'NAV / COURSE', hex:'#EAF0FB',
+      titleHint:'e.g. Turn point Alpha', descHint:'What this waypoint means'
+    },
+    hazard: {
+      label:'Hazards', short:'HAZARDS', hex:'#9C74D6',
+      titleHint:'e.g. Debris field', descHint:'Hazard / area to avoid'
+    },
+    objective: {
+      label:'Objectives', short:'OBJECTIVES', hex:'#1F8A55',
+      titleHint:'e.g. Rally point', descHint:'What this objective means'
+    },
+    hostile: {
+      label:'Hostiles / Hostile Area', short:'HOSTILES', hex:'#C41E3A',
+      titleHint:'e.g. Hostile patrol', descHint:'Threat details'
+    },
+    unknown: {
+      label:'Unknown / Suspect / Investigate', short:'UNKNOWN', hex:'#E3C23E',
+      titleHint:'e.g. Unidentified signal', descHint:'What needs investigating'
+    },
+    mission: {
+      label:'Mission Objectives', short:'MISSION OBJ.', hex:'#3B5FE0',
+      titleHint:'e.g. Primary mission objective', descHint:'What this mission objective is'
+    }
   };
+  var CAT_KEYS = Object.keys(CATEGORIES);
 
   var STORAGE_KEY = 'ucn_nav_radar_waypoints';
-  var waypoints = [];
+  var SCHEMA_VERSION = 1;
 
-  function loadWaypoints(){
-    try{
-      var raw = localStorage.getItem(STORAGE_KEY);
-      waypoints = raw ? JSON.parse(raw) : [];
-    }catch(e){
-      waypoints = [];
-    }
-  }
-  function saveWaypoints(){
-    try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(waypoints));
-    }catch(e){ /* storage unavailable, continue in-memory only */ }
-  }
+  var waypoints = [];
+  var openIds = Object.create(null);   // id -> true, survives re-renders
+  var editingId = null;                // at most one waypoint in edit mode
+  var confirmDeleteId = null;          // at most one delete awaiting confirmation
+  var pendingFocus = null;             // {listId, id, sel} restored after render
+  var storageAvailable = true;
+
+  /* ---------- helpers ---------- */
 
   function escapeHtml(str){
-    return String(str || '').replace(/[&<>"']/g, function(c){
+    return String(str == null ? '' : str).replace(/[&<>"']/g, function(c){
       return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
     });
   }
 
-  function renderList(cat){
-    var containerId = cat === 'all' ? 'list-all' : 'list-' + cat;
-    var container = document.getElementById(containerId);
+  function setNotice(msg, isWarn){
+    var el = document.getElementById('notice');
+    el.textContent = msg || '';
+    el.classList.toggle('warn', !!isWarn);
+    if(msg){
+      clearTimeout(setNotice._t);
+      setNotice._t = setTimeout(function(){
+        el.textContent = '';
+        el.classList.remove('warn');
+      }, 6000);
+    }
+  }
+
+  function setFormNote(cat, msg, isWarn){
+    var el = document.getElementById('note-' + cat);
+    if(!el) return;
+    el.textContent = msg || '';
+    el.classList.toggle('warn', !!isWarn);
+  }
+
+  function newId(){
+    return 'wp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+  }
+
+  function findWaypoint(id){
+    for(var i=0;i<waypoints.length;i++){ if(waypoints[i].id === id) return waypoints[i]; }
+    return null;
+  }
+
+  function duplicateNumber(cat, number, ignoreId){
+    var n = String(number).trim().toLowerCase();
+    return waypoints.some(function(w){
+      return w.category === cat && w.id !== ignoreId && w.number.trim().toLowerCase() === n;
+    });
+  }
+
+  /* ---------- persistence ---------- */
+
+  function normaliseWaypoint(raw){
+    if(!raw || typeof raw !== 'object') return null;
+    if(!CATEGORIES[raw.category]) return null;
+    var number = String(raw.number == null ? '' : raw.number).trim();
+    var title  = String(raw.title  == null ? '' : raw.title).trim();
+    if(!number || !title) return null;
+    return {
+      id: typeof raw.id === 'string' && raw.id ? raw.id : newId(),
+      category: raw.category,
+      number: number,
+      title: title,
+      sector: String(raw.sector == null ? '' : raw.sector).trim(),
+      description: String(raw.description == null ? '' : raw.description).trim()
+    };
+  }
+
+  function loadWaypoints(){
+    var raw;
+    try{
+      raw = localStorage.getItem(STORAGE_KEY);
+    }catch(e){
+      storageAvailable = false;
+      document.getElementById('storageBanner').hidden = false;
+      return;
+    }
+    if(!raw) return;
+    try{
+      var parsed = JSON.parse(raw);
+      // v0 stored a bare array; v1 stores {version, waypoints}
+      var list = Array.isArray(parsed) ? parsed
+               : (parsed && Array.isArray(parsed.waypoints) ? parsed.waypoints : []);
+      waypoints = list.map(normaliseWaypoint).filter(Boolean);
+    }catch(e){
+      waypoints = [];
+      setNotice('Saved waypoint data could not be read and was ignored.', true);
+    }
+  }
+
+  function saveWaypoints(){
+    if(!storageAvailable) return;
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        version: SCHEMA_VERSION,
+        waypoints: waypoints
+      }));
+    }catch(e){
+      storageAvailable = false;
+      document.getElementById('storageBanner').hidden = false;
+    }
+  }
+
+  /* ---------- build tabs & panels from CATEGORIES ---------- */
+
+  function buildCategoryUi(){
+    var tabNav = document.getElementById('tabNav');
+    var main = document.querySelector('main');
+
+    CAT_KEYS.forEach(function(cat){
+      var c = CATEGORIES[cat];
+
+      var tab = document.createElement('button');
+      tab.className = 'tab-btn';
+      tab.type = 'button';
+      tab.setAttribute('role','tab');
+      tab.id = 'tab-' + cat;
+      tab.setAttribute('data-cat', cat);
+      tab.setAttribute('aria-selected','false');
+      tab.setAttribute('aria-controls','panel-' + cat);
+      tab.tabIndex = -1;
+      tab.innerHTML = '<span class="dot" style="background:' + c.hex + '"></span>' + escapeHtml(c.short);
+      tabNav.appendChild(tab);
+
+      var panel = document.createElement('section');
+      panel.className = 'panel';
+      panel.id = 'panel-' + cat;
+      panel.setAttribute('role','tabpanel');
+      panel.setAttribute('aria-labelledby','tab-' + cat);
+      panel.tabIndex = 0;
+      panel.hidden = true;
+      panel.innerHTML =
+        '<h2 class="panel-title"><span class="swatch" style="background:' + c.hex + '"></span>' + escapeHtml(c.label) + '</h2>' +
+        '<form class="wp-form" data-cat="' + cat + '" aria-label="Add ' + escapeHtml(c.label) + ' waypoint">' +
+          '<label>Waypoint # <input type="text" name="number" required placeholder="e.g. 01"></label>' +
+          '<label>Title <input type="text" name="title" required placeholder="' + escapeHtml(c.titleHint) + '"></label>' +
+          '<label>Sector <input type="text" name="sector" placeholder="optional"></label>' +
+          '<label class="full">Description <textarea name="description" placeholder="' + escapeHtml(c.descHint) + '"></textarea></label>' +
+          '<div class="form-actions"><button type="submit" class="btn">Add Waypoint</button></div>' +
+        '</form>' +
+        '<p class="form-note" id="note-' + cat + '" role="status" aria-live="polite"></p>' +
+        '<ul class="wp-list" id="list-' + cat + '" aria-label="' + escapeHtml(c.label) + ' waypoints"></ul>';
+      main.appendChild(panel);
+    });
+  }
+
+  /* ---------- rendering ---------- */
+
+  function editFormHtml(w){
+    return (
+      '<form class="wp-form edit-form" data-id="' + escapeHtml(w.id) + '" aria-label="Edit waypoint ' + escapeHtml(w.number) + '">' +
+        '<label>Waypoint # <input type="text" name="number" required value="' + escapeHtml(w.number) + '"></label>' +
+        '<label>Title <input type="text" name="title" required value="' + escapeHtml(w.title) + '"></label>' +
+        '<label>Sector <input type="text" name="sector" value="' + escapeHtml(w.sector) + '"></label>' +
+        '<label class="full">Description <textarea name="description">' + escapeHtml(w.description) + '</textarea></label>' +
+        '<div class="form-actions">' +
+          '<button type="button" class="btn secondary btn-edit-cancel">Cancel</button>' +
+          '<button type="submit" class="btn">Save</button>' +
+        '</div>' +
+      '</form>'
+    );
+  }
+
+  function actionsHtml(w){
+    if(confirmDeleteId === w.id){
+      return (
+        '<div class="actions">' +
+          '<span class="confirm-text">Delete this waypoint permanently?</span>' +
+          '<button class="btn danger btn-delete-confirm" type="button">Delete</button>' +
+          '<button class="btn secondary btn-delete-cancel" type="button">Cancel</button>' +
+        '</div>'
+      );
+    }
+    return (
+      '<div class="actions">' +
+        '<button class="btn secondary btn-edit" type="button">Edit</button>' +
+        '<button class="btn secondary btn-delete" type="button">Delete</button>' +
+      '</div>'
+    );
+  }
+
+  function itemHtml(w, listKey){
+    var c = CATEGORIES[w.category];
+    var hex = c ? c.hex : '#8FA0C0';
+    var catLabel = c ? c.label : 'Uncategorised';
+    var isOpen = !!openIds[w.id];
+    var detailsId = 'det-' + listKey + '-' + w.id;
+
+    var body = (editingId === w.id)
+      ? editFormHtml(w)
+      : ('<div class="desc">' +
+           (w.description ? escapeHtml(w.description) : '<em>No description provided.</em>') +
+         '</div>' + actionsHtml(w));
+
+    return (
+      '<li class="wp-item' + (isOpen ? ' open' : '') + '" data-id="' + escapeHtml(w.id) + '" style="border-left-color:' + hex + '">' +
+        '<button class="row" type="button" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + detailsId + '">' +
+          '<span class="num">#' + escapeHtml(w.number) + '</span>' +
+          '<span class="title">' + escapeHtml(w.title) + '</span>' +
+          '<span class="sr-only">, category: ' + escapeHtml(catLabel) + '</span>' +
+          (w.sector ? '<span class="sector">' + escapeHtml(w.sector) + '</span>' : '') +
+          '<span class="caret" aria-hidden="true">&#9656;</span>' +
+        '</button>' +
+        '<div class="details" id="' + detailsId + '">' +
+          '<span class="cat-tag">' + escapeHtml(catLabel) + '</span>' +
+          body +
+        '</div>' +
+      '</li>'
+    );
+  }
+
+  function renderList(listKey){
+    var container = document.getElementById('list-' + listKey);
     if(!container) return;
 
-    var items = cat === 'all'
+    var items = listKey === 'all'
       ? waypoints.slice()
-      : waypoints.filter(function(w){ return w.category === cat; });
+      : waypoints.filter(function(w){ return w.category === listKey; });
 
     items.sort(function(a,b){
       return (a.number || '').localeCompare(b.number || '', undefined, {numeric:true});
@@ -623,149 +827,379 @@
       return;
     }
 
-    container.innerHTML = items.map(function(w){
-      var catInfo = CATEGORIES[w.category];
-      var hex = catInfo ? catInfo.hex : '#8FA0C0';
-      var catLabel = catInfo ? catInfo.label : '';
+    container.innerHTML = items.map(function(w){ return itemHtml(w, listKey); }).join('');
+  }
+
+  function render(){
+    renderList('all');
+    CAT_KEYS.forEach(renderList);
+    restoreFocus();
+  }
+
+  function restoreFocus(){
+    if(!pendingFocus) return;
+    var list = document.getElementById(pendingFocus.listId);
+    var target = list && list.querySelector('[data-id="' + pendingFocus.id + '"] ' + pendingFocus.sel);
+    if(target) target.focus();
+    pendingFocus = null;
+  }
+
+  /* ---------- mutations ---------- */
+
+  function setOpen(id, open){
+    if(open) openIds[id] = true; else delete openIds[id];
+    // Update every rendered copy of this waypoint so tabs stay in sync.
+    var nodes = document.querySelectorAll('.wp-item[data-id="' + id + '"]');
+    Array.prototype.forEach.call(nodes, function(node){
+      node.classList.toggle('open', open);
+      var row = node.querySelector('button.row');
+      if(row) row.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
+
+  function addWaypoint(cat, data){
+    var w = normaliseWaypoint({
+      category: cat,
+      number: data.number,
+      title: data.title,
+      sector: data.sector,
+      description: data.description
+    });
+    if(!w) return;
+    var dup = duplicateNumber(cat, w.number, null);
+    waypoints.push(w);
+    saveWaypoints();
+    render();
+    setFormNote(cat,
+      dup ? 'Added #' + w.number + ' — note another waypoint in this category already uses that number.'
+          : 'Added waypoint #' + w.number + '.',
+      dup);
+  }
+
+  function saveEdit(id, data){
+    var w = findWaypoint(id);
+    if(!w) return;
+    var number = String(data.number).trim();
+    var title = String(data.title).trim();
+    if(!number || !title) return;
+    var dup = duplicateNumber(w.category, number, id);
+    w.number = number;
+    w.title = title;
+    w.sector = String(data.sector || '').trim();
+    w.description = String(data.description || '').trim();
+    editingId = null;
+    saveWaypoints();
+    render();
+    setNotice(dup
+      ? 'Saved #' + number + ' — note another waypoint in this category already uses that number.'
+      : 'Waypoint #' + number + ' saved.', dup);
+  }
+
+  function deleteWaypoint(id){
+    var w = findWaypoint(id);
+    waypoints = waypoints.filter(function(x){ return x.id !== id; });
+    delete openIds[id];
+    if(editingId === id) editingId = null;
+    confirmDeleteId = null;
+    saveWaypoints();
+    render();
+    setNotice(w ? 'Waypoint #' + w.number + ' deleted.' : 'Waypoint deleted.');
+  }
+
+  /* ---------- tabs ---------- */
+
+  function selectTab(cat, focusTab){
+    var tabs = document.querySelectorAll('.tab-btn');
+    Array.prototype.forEach.call(tabs, function(t){
+      var isActive = t.getAttribute('data-cat') === cat;
+      t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      t.tabIndex = isActive ? 0 : -1;
+      if(isActive && focusTab) t.focus();
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.panel'), function(p){
+      p.hidden = (p.id !== 'panel-' + cat);
+    });
+  }
+
+  function initTabs(){
+    var tabNav = document.getElementById('tabNav');
+
+    tabNav.addEventListener('click', function(e){
+      var btn = e.target.closest('.tab-btn');
+      if(btn) selectTab(btn.getAttribute('data-cat'), false);
+    });
+
+    tabNav.addEventListener('keydown', function(e){
+      var keys = ['ArrowRight','ArrowLeft','Home','End'];
+      if(keys.indexOf(e.key) === -1) return;
+      var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab-btn'));
+      var current = tabs.indexOf(document.activeElement);
+      if(current === -1) return;
+      e.preventDefault();
+      var next;
+      if(e.key === 'Home') next = 0;
+      else if(e.key === 'End') next = tabs.length - 1;
+      else if(e.key === 'ArrowRight') next = (current + 1) % tabs.length;
+      else next = (current - 1 + tabs.length) % tabs.length;
+      selectTab(tabs[next].getAttribute('data-cat'), true);
+    });
+  }
+
+  /* ---------- list & form wiring ---------- */
+
+  function initLists(){
+    Array.prototype.forEach.call(document.querySelectorAll('ul.wp-list'), function(list){
+      list.addEventListener('click', function(e){
+        var item = e.target.closest('.wp-item');
+        if(!item) return;
+        var id = item.getAttribute('data-id');
+
+        if(e.target.closest('.btn-delete')){
+          confirmDeleteId = id;
+          pendingFocus = {listId:list.id, id:id, sel:'.btn-delete-confirm'};
+          render();
+          return;
+        }
+        if(e.target.closest('.btn-delete-cancel')){
+          confirmDeleteId = null;
+          pendingFocus = {listId:list.id, id:id, sel:'.btn-delete'};
+          render();
+          return;
+        }
+        if(e.target.closest('.btn-delete-confirm')){
+          deleteWaypoint(id);
+          return;
+        }
+        if(e.target.closest('.btn-edit')){
+          editingId = id;
+          confirmDeleteId = null;
+          openIds[id] = true;
+          pendingFocus = {listId:list.id, id:id, sel:'input[name="number"]'};
+          render();
+          return;
+        }
+        if(e.target.closest('.btn-edit-cancel')){
+          editingId = null;
+          pendingFocus = {listId:list.id, id:id, sel:'button.row'};
+          render();
+          return;
+        }
+        var row = e.target.closest('button.row');
+        if(row) setOpen(id, !openIds[id]);
+      });
+
+      // Inline edit forms live inside the lists; submit bubbles.
+      list.addEventListener('submit', function(e){
+        var form = e.target.closest('form.edit-form');
+        if(!form) return;
+        e.preventDefault();
+        var id = form.getAttribute('data-id');
+        pendingFocus = {listId:list.id, id:id, sel:'button.row'};
+        saveEdit(id, {
+          number: form.elements.number.value,
+          title: form.elements.title.value,
+          sector: form.elements.sector.value,
+          description: form.elements.description.value
+        });
+      });
+    });
+  }
+
+  function initForms(){
+    Array.prototype.forEach.call(document.querySelectorAll('form.wp-form[data-cat]'), function(form){
+      form.addEventListener('submit', function(e){
+        e.preventDefault();
+        var cat = form.getAttribute('data-cat');
+        var data = {
+          number: form.elements.number.value,
+          title: form.elements.title.value,
+          sector: form.elements.sector.value,
+          description: form.elements.description.value
+        };
+        if(!data.number.trim() || !data.title.trim()){
+          setFormNote(cat, 'Waypoint # and Title are both required.', true);
+          return;
+        }
+        addWaypoint(cat, data);
+        form.reset();
+        form.elements.number.focus();
+      });
+    });
+  }
+
+  /* ---------- export / import ---------- */
+
+  function exportWaypoints(){
+    if(waypoints.length === 0){
+      setNotice('Nothing to export — no waypoints logged yet.', true);
+      return;
+    }
+    var payload = JSON.stringify({ version: SCHEMA_VERSION, waypoints: waypoints }, null, 2);
+    var blob = new Blob([payload], {type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'ucn-waypoints-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    setNotice('Exported ' + waypoints.length + ' waypoint' + (waypoints.length === 1 ? '' : 's') + '.');
+  }
+
+  function importWaypoints(text){
+    var parsed;
+    try{
+      parsed = JSON.parse(text);
+    }catch(e){
+      setNotice('Import failed — that file is not valid JSON.', true);
+      return;
+    }
+    var list = Array.isArray(parsed) ? parsed
+             : (parsed && Array.isArray(parsed.waypoints) ? parsed.waypoints : null);
+    if(!list){
+      setNotice('Import failed — no waypoint list found in that file.', true);
+      return;
+    }
+
+    var existing = Object.create(null);
+    waypoints.forEach(function(w){ existing[w.id] = true; });
+
+    var added = 0, skipped = 0;
+    list.forEach(function(raw){
+      var w = normaliseWaypoint(raw);
+      if(!w){ skipped++; return; }
+      if(existing[w.id]) w.id = newId();   // keep both copies rather than overwrite
+      existing[w.id] = true;
+      waypoints.push(w);
+      added++;
+    });
+
+    saveWaypoints();
+    render();
+    setNotice('Imported ' + added + ' waypoint' + (added === 1 ? '' : 's') +
+              (skipped ? ' — ' + skipped + ' entr' + (skipped === 1 ? 'y was' : 'ies were') + ' skipped as invalid.' : '.'),
+              skipped > 0);
+  }
+
+  function initTransfer(){
+    document.getElementById('exportBtn').addEventListener('click', exportWaypoints);
+
+    var input = document.getElementById('importInput');
+    document.getElementById('importBtn').addEventListener('click', function(){ input.click(); });
+    input.addEventListener('change', function(){
+      var file = input.files && input.files[0];
+      if(!file) return;
+      var reader = new FileReader();
+      reader.onload = function(){ importWaypoints(String(reader.result)); };
+      reader.onerror = function(){ setNotice('Import failed — the file could not be read.', true); };
+      reader.readAsText(file);
+      input.value = '';
+    });
+  }
+
+  /* ---------- quick reference modal ---------- */
+
+  var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), textarea, select, [tabindex]:not([tabindex="-1"])';
+
+  function initModal(){
+    var overlay = document.getElementById('refOverlay');
+    var dialog = overlay.querySelector('.modal');
+    var openBtn = document.getElementById('quickRefBtn');
+    var closeBtn = document.getElementById('closeRefBtn');
+    var lastFocused = null;
+
+    function open(){
+      lastFocused = document.activeElement;
+      overlay.classList.add('open');
+      document.body.classList.add('modal-open');
+      closeBtn.focus();
+    }
+    function close(){
+      overlay.classList.remove('open');
+      document.body.classList.remove('modal-open');
+      if(lastFocused && lastFocused.focus) lastFocused.focus();
+    }
+
+    openBtn.addEventListener('click', open);
+    closeBtn.addEventListener('click', close);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) close(); });
+
+    document.addEventListener('keydown', function(e){
+      if(!overlay.classList.contains('open')) return;
+      if(e.key === 'Escape'){ e.preventDefault(); close(); return; }
+      if(e.key !== 'Tab') return;
+      var nodes = Array.prototype.filter.call(
+        dialog.querySelectorAll(FOCUSABLE),
+        function(n){ return n.offsetParent !== null; }
+      );
+      if(nodes.length === 0) return;
+      var first = nodes[0], last = nodes[nodes.length - 1];
+      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    });
+  }
+
+  /* ---------- quick reference content ---------- */
+
+  function buildShipGrid(){
+    var SHIP_TYPES = ['Drone','Gunship','Shuttle','Frigate','Destroyer','Cruiser','Battle Cruiser','Battleship','Carrier','Freighter'];
+    document.getElementById('shipGrid').innerHTML = SHIP_TYPES.map(function(name){
       return (
-        '<li class="wp-item" data-id="' + w.id + '" style="border-left-color:' + hex + '">' +
-          '<div class="row">' +
-            '<span class="num">#' + escapeHtml(w.number) + '</span>' +
-            '<span class="title">' + escapeHtml(w.title) + '</span>' +
-            (w.sector ? '<span class="sector">' + escapeHtml(w.sector) + '</span>' : '') +
-            '<span class="caret">&#9656;</span>' +
-          '</div>' +
-          '<div class="details">' +
-            (cat === 'all' ? '<span class="cat-tag">' + escapeHtml(catLabel) + '</span><br>' : '') +
-            '<div>' + (w.description ? escapeHtml(w.description) : '<em>No description provided.</em>') + '</div>' +
-            '<div class="actions">' +
-              '<button class="btn secondary btn-delete" type="button">Delete</button>' +
-            '</div>' +
-          '</div>' +
-        '</li>'
+        '<div class="ship-card">' +
+          '<div class="ship-icon-slot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 16l9-11 9 11"/><path d="M5 16h14l-2 4H7z"/></svg></div>' +
+          escapeHtml(name) +
+        '</div>'
       );
     }).join('');
   }
 
-  function renderAllLists(){
-    renderList('all');
-    Object.keys(CATEGORIES).forEach(renderList);
-  }
-
-  function addWaypoint(cat, data){
-    waypoints.push({
-      id: 'wp_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
-      category: cat,
-      number: data.number.trim(),
-      title: data.title.trim(),
-      sector: (data.sector || '').trim(),
-      description: (data.description || '').trim()
-    });
-    saveWaypoints();
-    renderAllLists();
-  }
-
-  function deleteWaypoint(id){
-    waypoints = waypoints.filter(function(w){ return w.id !== id; });
-    saveWaypoints();
-    renderAllLists();
-  }
-
-  // Tab switching
-  var tabButtons = document.querySelectorAll('.tab-btn');
-  tabButtons.forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var cat = btn.getAttribute('data-cat');
-      tabButtons.forEach(function(b){ b.classList.remove('active'); });
-      btn.classList.add('active');
-      document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
-      document.getElementById('panel-' + cat).classList.add('active');
-    });
-  });
-
-  // Forms
-  document.querySelectorAll('form.wp-form').forEach(function(form){
-    form.addEventListener('submit', function(e){
-      e.preventDefault();
-      var cat = form.getAttribute('data-cat');
-      var data = {
-        number: form.number.value,
-        title: form.title.value,
-        sector: form.sector.value,
-        description: form.description.value
-      };
-      if(!data.number.trim() || !data.title.trim()) return;
-      addWaypoint(cat, data);
-      form.reset();
-    });
-  });
-
-  // Click to expand / delete (event delegation across all lists)
-  document.querySelectorAll('ul.wp-list').forEach(function(list){
-    list.addEventListener('click', function(e){
-      var deleteBtn = e.target.closest('.btn-delete');
-      if(deleteBtn){
-        var item = e.target.closest('.wp-item');
-        if(item) deleteWaypoint(item.getAttribute('data-id'));
-        return;
-      }
-      var row = e.target.closest('.row');
-      if(row){
-        var wpItem = row.closest('.wp-item');
-        wpItem.classList.toggle('open');
-      }
-    });
-  });
-
-  // Quick Reference modal
-  var refOverlay = document.getElementById('refOverlay');
-  document.getElementById('quickRefBtn').addEventListener('click', function(){
-    refOverlay.classList.add('open');
-  });
-  document.getElementById('closeRefBtn').addEventListener('click', function(){
-    refOverlay.classList.remove('open');
-  });
-  refOverlay.addEventListener('click', function(e){
-    if(e.target === refOverlay) refOverlay.classList.remove('open');
-  });
-
-  // Ship types quick reference (icon slots ready for future upload)
-  var SHIP_TYPES = ['Drone','Gunship','Shuttle','Frigate','Destroyer','Cruiser','Battle Cruiser','Battleship','Carrier','Freighter'];
-  var shipGrid = document.getElementById('shipGrid');
-  shipGrid.innerHTML = SHIP_TYPES.map(function(name){
-    return (
-      '<div class="ship-card">' +
-        '<div class="ship-icon-slot"><svg viewBox="0 0 24 24"><path d="M3 16l9-11 9 11"/><path d="M5 16h14l-2 4H7z"/></svg></div>' +
-        escapeHtml(name) +
-      '</div>'
-    );
-  }).join('');
-
-  // Compass (0 - 340 in 20 degree increments)
-  var compassWrap = document.getElementById('compassWrap');
-  (function buildCompass(){
-    var size = 220, cx = size/2, cy = size/2, r = 95, tickOuter = r, tickInner = r - 10, labelR = r - 26;
-    var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">';
+  // Bearing dial: labelled every 20 degrees, plus the four cardinals (0/90/180/270)
+  // which the 20-degree step alone would skip for 90 and 270.
+  function buildCompass(){
+    var size = 240, cx = size/2, cy = size/2, r = 104, labelR = r - 28;
+    var svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" ' +
+              'role="img" aria-label="Compass dial marked every 20 degrees with cardinal bearings 0, 90, 180 and 270 highlighted">';
     svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#4FA8C9" stroke-width="1.5" opacity="0.5"/>';
     svg += '<circle cx="' + cx + '" cy="' + cy + '" r="4" fill="#4FA8C9"/>';
-    for(var deg = 0; deg < 360; deg += 20){
-      var rad = (deg - 90) * Math.PI / 180;
-      var x1 = cx + tickOuter * Math.cos(rad);
-      var y1 = cy + tickOuter * Math.sin(rad);
-      var x2 = cx + tickInner * Math.cos(rad);
-      var y2 = cy + tickInner * Math.sin(rad);
-      var lx = cx + labelR * Math.cos(rad);
-      var ly = cy + labelR * Math.sin(rad);
+
+    for(var deg = 0; deg < 360; deg += 10){
       var major = (deg % 90 === 0);
-      svg += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="' + (major ? '#DD7A2B' : '#8FA0C0') + '" stroke-width="' + (major ? 2 : 1) + '"/>';
-      svg += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="' + (major ? '#EAF0FB' : '#8FA0C0') + '" font-size="10" text-anchor="middle" dominant-baseline="middle">' + deg + '</text>';
+      if(deg % 20 !== 0 && !major) continue;
+
+      var rad = (deg - 90) * Math.PI / 180;
+      var cos = Math.cos(rad), sin = Math.sin(rad);
+      var inner = r - (major ? 15 : 10);
+      var x1 = cx + r * cos, y1 = cy + r * sin;
+      var x2 = cx + inner * cos, y2 = cy + inner * sin;
+      var lx = cx + labelR * cos, ly = cy + labelR * sin;
+
+      svg += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) +
+             '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) +
+             '" stroke="' + (major ? '#DD7A2B' : '#8FA0C0') + '" stroke-width="' + (major ? 2.5 : 1) + '"/>';
+      svg += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) +
+             '" fill="' + (major ? '#EAF0FB' : '#8FA0C0') + '" font-size="' + (major ? 11 : 9) +
+             '" font-weight="' + (major ? 700 : 400) +
+             '" text-anchor="middle" dominant-baseline="middle">' + deg + '</text>';
     }
     svg += '</svg>';
-    compassWrap.innerHTML = svg;
-  })();
+    document.getElementById('compassWrap').innerHTML = svg;
+  }
+
+  /* ---------- boot ---------- */
+
+  buildCategoryUi();
+  initTabs();
+  initForms();
+  initTransfer();
+  initModal();
+  buildShipGrid();
+  buildCompass();
 
   loadWaypoints();
-  renderAllLists();
+  render();
+  initLists();   // lists exist only after buildCategoryUi()
+  selectTab('all', false);
 })();
 </script>
 
