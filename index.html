@@ -23,12 +23,15 @@
     --text:#EAF0FB;
     --muted:#8FA0C0;
 
+    /* Category colours. These are UI indicators, so they need 3:1 against the
+       card background (#1C2A46) to stay readable at a glance in a dark room.
+       Keep them in step with CATEGORIES[].hex in the script below. */
     --c-nav: #EAF0FB;
     --c-hazard: #9C74D6;
-    --c-objective: #1F8A55;
-    --c-hostile: #C41E3A;
+    --c-objective: #2FB574;
+    --c-hostile: #E05265;
     --c-unknown: #E3C23E;
-    --c-mission: #3B5FE0;
+    --c-mission: #6C8AFF;
   }
 
   *{box-sizing:border-box;}
@@ -326,7 +329,7 @@
     background:var(--console);
     border:1px solid rgba(255,255,255,0.12);
     border-radius:12px;
-    max-width:760px;
+    max-width:860px;
     width:100%;
     padding:22px;
   }
@@ -380,7 +383,12 @@
   .ship-icon-slot.has-icon svg{ width:100%; height:100%; }
   .ship-icon-slot.placeholder svg{ width:22px; height:22px; stroke:var(--muted); fill:none; }
 
-  .colour-list{ display:flex; flex-direction:column; gap:10px; }
+  /* Single column by default; the reference lists pair up once there is room,
+     which roughly halves the scroll through the panel on a desktop. */
+  .colour-list{ display:grid; grid-template-columns:1fr; gap:10px; align-content:start; }
+  @media (min-width:700px){
+    .colour-list{ grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); }
+  }
   .colour-row{
     display:flex; gap:10px; align-items:flex-start;
     background:var(--input); padding:10px 12px; border-radius:8px;
@@ -584,11 +592,11 @@
       titleHint:'e.g. Debris field', descHint:'Hazard / area to avoid'
     },
     objective: {
-      label:'Objectives', short:'OBJECTIVES', hex:'#1F8A55',
+      label:'Objectives', short:'OBJECTIVES', hex:'#2FB574',
       titleHint:'e.g. Rally point', descHint:'What this objective means'
     },
     hostile: {
-      label:'Hostiles / Hostile Area', short:'HOSTILES', hex:'#C41E3A',
+      label:'Hostiles / Hostile Area', short:'HOSTILES', hex:'#E05265',
       titleHint:'e.g. Hostile patrol', descHint:'Threat details'
     },
     unknown: {
@@ -596,7 +604,7 @@
       titleHint:'e.g. Unidentified signal', descHint:'What needs investigating'
     },
     mission: {
-      label:'Mission Objectives', short:'MISSION OBJ.', hex:'#3B5FE0',
+      label:'Mission Objectives', short:'MISSION OBJ.', hex:'#6C8AFF',
       titleHint:'e.g. Primary mission objective', descHint:'What this mission objective is'
     }
   };
@@ -817,6 +825,19 @@
     );
   }
 
+  // Point an empty list at whatever the next useful action is, rather than
+  // just stating that it is empty.
+  function emptyMessage(listKey){
+    if(listKey === 'all'){
+      return waypoints.length === 0
+        ? 'Nothing logged yet. Pick a category tab above to add your first waypoint.'
+        : 'No waypoints in this view.';
+    }
+    var c = CATEGORIES[listKey];
+    return 'No ' + escapeHtml(c ? c.label.toLowerCase() : 'waypoints') +
+           ' logged yet. Use the form above to add one.';
+  }
+
   function renderList(listKey){
     var container = document.getElementById('list-' + listKey);
     if(!container) return;
@@ -830,7 +851,7 @@
     });
 
     if(items.length === 0){
-      container.innerHTML = '<li class="empty-note">No waypoints logged yet.</li>';
+      container.innerHTML = '<li class="empty-note">' + emptyMessage(listKey) + '</li>';
       return;
     }
 
@@ -1184,16 +1205,19 @@
     { name:'Carrier',        icon:'carrier' },
     { name:'Freighter',      icon:'freighter' },
     { name:'Small Station',  icon:'small_station' },
-    { name:'Arrow',          icon:'arrow' }
+    // Arrow is a solid mark among thin line-art silhouettes, so it reads far
+    // heavier than the ships at the same size. Scale it back to match.
+    { name:'Arrow',          icon:'arrow', scale:0.7 }
   ];
 
   function buildShipGrid(){
     document.getElementById('shipGrid').innerHTML = SHIP_TYPES.map(function(ship){
       var art = ship.icon && SHIP_ICONS[ship.icon];
+      var style = art && ship.scale ? ' style="transform:scale(' + ship.scale + ')"' : '';
       return (
         '<div class="ship-card">' +
           '<div class="ship-icon-slot ' + (art ? 'has-icon' : 'placeholder') + '"' +
-               (art ? '' : ' title="Icon not supplied yet"') + '>' +
+               (art ? '' : ' title="Icon not supplied yet"') + style + '>' +
             (art || PLACEHOLDER_ICON) +
           '</div>' +
           escapeHtml(ship.name) +
