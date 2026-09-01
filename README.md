@@ -44,6 +44,7 @@ Mission setup is stored alongside the waypoints and included in every export.
 
 ## Export & Import
 
+- **PDF Report** produces a printable mission report: cover sheet, clickable table of contents, mission setup, waypoint summary and per-category tables, waypoint detail, the completed log with outcomes and durations, and the quick reference.
 - **Export** downloads your whole log as a JSON file (`ucn-waypoints-YYYY-MM-DD.json`).
 - **Import** reads a previously exported file and **merges** it into the current log — nothing is overwritten, and entries that don't parse as valid waypoints are skipped and reported.
 - Mission setup is singular rather than a list, so it is only adopted from an imported file when your own setup is still blank. If you have already filled it in, the file's setup is ignored and the import says so — an import can never overwrite the sortie in progress.
@@ -69,7 +70,7 @@ Accessible via the "Quick Reference" button in the header. Closes with Escape or
 
 ## Notes
 
-- This tool does not generate or export PDFs. Export is JSON only.
+- PDF reports are generated in the browser by jsPDF, vendored inline along with subset Exo 2 and Orbitron fonts, so export works offline with no build step and no CDN. This is what makes `index.html` large; if the fonts fail to register the report still exports, falling back to Helvetica.
 - Waypoint data is stored locally in the browser (per device/browser), so it will persist between visits on the same device but won't sync across devices. If the browser blocks local storage, a banner warns you that the log won't survive closing the page.
 - Stored data carries a schema version, and logs saved by older versions of the tool are migrated automatically on load. Completion times and outcomes are included in exports.
 - Matches the standard UCN dark navy visual theme used across the rest of the tool suite.
