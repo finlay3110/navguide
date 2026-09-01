@@ -499,6 +499,35 @@
   .close-btn:hover{ color:var(--text); }
 
   .ref-section{ margin-bottom:22px; }
+
+  /* Quick Reference is five stacked sections; collapsing each behind its own
+     button turns a long scroll into an index you can tap. */
+  #refOverlay .ref-section{ margin-bottom:8px; }
+  #refOverlay .ref-section h3{ margin:0; }
+  .ref-toggle{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    width:100%;
+    min-height:44px;
+    padding:10px 12px;
+    background:var(--input);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:8px;
+    color:var(--cyan);
+    font-family:'Orbitron', sans-serif;
+    font-size:0.72rem;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    text-align:left;
+    cursor:pointer;
+  }
+  .ref-toggle:hover{ border-color:var(--cyan); }
+  .ref-caret{ color:var(--muted); transition:transform .15s; flex-shrink:0; }
+  .ref-section.open .ref-toggle{ border-color:var(--cyan); }
+  .ref-section.open .ref-caret{ transform:rotate(90deg); }
+  .ref-body{ padding:12px 2px 4px 2px; }
   .ref-section h3{
     font-size:0.8rem;
     color:var(--cyan);
@@ -2320,6 +2349,44 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
     };
   }
 
+  // Scoped to #refOverlay: the completion dialog reuses .ref-section for its
+  // quick-outcome group and must not become collapsible.
+  function initRefAccordion(){
+    var sections = document.querySelectorAll('#refOverlay .ref-section');
+    Array.prototype.forEach.call(sections, function(section, i){
+      var h3 = section.querySelector('h3');
+      if(!h3) return;
+
+      var label = h3.textContent;
+      var panelId = 'refpanel-' + i;
+
+      var body = document.createElement('div');
+      body.className = 'ref-body';
+      body.id = panelId;
+      body.hidden = true;
+      while(h3.nextSibling){ body.appendChild(h3.nextSibling); }
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ref-toggle';
+      btn.setAttribute('aria-expanded', 'false');
+      btn.setAttribute('aria-controls', panelId);
+      btn.innerHTML = '<span>' + escapeHtml(label) + '</span>' +
+                      '<span class="ref-caret" aria-hidden="true">&#9656;</span>';
+
+      h3.textContent = '';
+      h3.appendChild(btn);
+      section.appendChild(body);
+
+      btn.addEventListener('click', function(){
+        var opening = body.hidden;
+        body.hidden = !opening;
+        btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+        section.classList.toggle('open', opening);
+      });
+    });
+  }
+
   function initModal(){
     var ref = createDialog('refOverlay', {
       initialFocus: function(){ return document.getElementById('closeRefBtn'); }
@@ -2985,6 +3052,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   initModal();
   initCompleteDialog();
   buildShipGrid();
+  initRefAccordion();
   buildCompass();
 
   loadWaypoints();
