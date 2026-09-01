@@ -71,6 +71,7 @@ Accessible via the "Quick Reference" button in the header. Closes with Escape or
 ## Notes
 
 - PDF reports are generated in the browser by jsPDF, vendored inline along with subset Exo 2 and Orbitron fonts, so export works offline with no build step and no CDN. This is what makes `index.html` large; if the fonts fail to register the report still exports, falling back to Helvetica.
+- The report cover carries the UCN roundel, inlined as a base64 PNG flattened onto white and colour-reduced, at roughly 356dpi for the 32mm it prints at. If the image cannot be decoded the cover falls back to a drawn vector mark rather than failing the export.
 - Waypoint data is stored locally in the browser (per device/browser), so it will persist between visits on the same device but won't sync across devices. If the browser blocks local storage, a banner warns you that the log won't survive closing the page.
 - Stored data carries a schema version, and logs saved by older versions of the tool are migrated automatically on load. Completion times and outcomes are included in exports.
 - Matches the standard UCN dark navy visual theme used across the rest of the tool suite.
