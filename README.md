@@ -53,7 +53,9 @@ Use these to move a log between devices or browsers, or to back it up before cle
 
 ## Quick Reference panel
 
-Accessible via the "Quick Reference" button in the header. Closes with Escape or by clicking outside it. Includes:
+Accessible via the "Quick Reference" button in the header. Closes with Escape or by clicking outside it.
+
+Each section is collapsed behind its own button, so the panel opens as a short index rather than a long scroll — tap the one you need. Sections open independently, and whichever you left open is still open next time you bring the panel up. It contains:
 
 - **Ship types** — Drone, Fighter, Gunship, Shuttle, Frigate, Destroyer, Cruiser, Battle Cruiser, Battleship, Carrier, Freighter, Small Station and Arrow, each with its silhouette. Gunship still shows the dashed placeholder slot, as no gunship artwork has been supplied yet; drop one in and it picks up the same treatment as the rest.
 - **Radar colour meanings** — Red (Gravity), Green (Biological/Thermal), Blue (Electrical), with what each shows up on radar.
