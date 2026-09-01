@@ -311,6 +311,78 @@
   .wp-item .details .confirm-text{ font-size:0.75rem; color:var(--amber); }
   .wp-item form.wp-form{ margin:0; background:rgba(0,0,0,0.2); }
 
+  /* Completed waypoints stay in place, dimmed and struck through. The category
+     stripe is deliberately NOT dimmed: it is the only glanceable colour cue and
+     it was just brought up to a 3:1 contrast minimum. */
+  .wp-item.done button.row .num,
+  .wp-item.done button.row .title{ opacity:0.55; text-decoration:line-through; }
+  .wp-item.done .details .desc{ opacity:0.7; }
+  .done-tag{
+    font-size:0.7rem;
+    color:var(--c-objective);
+    white-space:nowrap;
+  }
+
+  .timing{
+    display:flex; flex-wrap:wrap; gap:6px 14px;
+    margin-top:8px;
+    font-size:0.72rem;
+    color:var(--muted);
+  }
+  .outcome{
+    margin-top:8px;
+    padding:8px 10px;
+    border-radius:6px;
+    background:rgba(47,181,116,0.10);
+    border-left:2px solid var(--c-objective);
+    font-size:0.8rem;
+  }
+  .outcome-label{
+    display:block;
+    font-size:0.62rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--c-objective);
+    margin-bottom:2px;
+  }
+
+  /* Completion dialog */
+  .complete-modal{ max-width:520px; }
+  .complete-started{
+    margin:0 0 14px 0;
+    font-size:0.75rem;
+    color:var(--muted);
+  }
+  .outcome-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+  .outcome-btn{ font-size:0.7rem; text-align:left; }
+  .outcome-btn:hover{ border-color:var(--c-objective); color:var(--text); }
+  .complete-label{
+    display:block;
+    font-size:0.72rem;
+    color:var(--muted);
+    margin-bottom:4px;
+  }
+  #outcomeText{
+    width:100%;
+    background:var(--bg);
+    border:1px solid rgba(255,255,255,0.15);
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:6px;
+    font-family:'Exo 2', sans-serif;
+    font-size:0.85rem;
+    resize:vertical;
+  }
+  #outcomeText:focus{
+    outline:none;
+    border-color:var(--cyan);
+    box-shadow:0 0 0 2px rgba(79,168,201,0.25);
+  }
+  .complete-actions{
+    display:flex; gap:10px; justify-content:flex-end;
+    margin-top:14px;
+  }
+
   .empty-note{ color:var(--muted); font-size:0.85rem; padding:10px 0; }
 
   /* Quick reference modal */
@@ -580,43 +652,85 @@
   </div>
 </div>
 
+<!-- Completion dialog -->
+<div class="modal-overlay" id="completeOverlay">
+  <div class="modal complete-modal" role="dialog" aria-modal="true" aria-labelledby="completeTitle">
+    <div class="modal-header">
+      <h2 id="completeTitle">Complete waypoint</h2>
+      <button class="close-btn" id="completeCancelX" type="button" aria-label="Cancel, leave this waypoint active">&times;</button>
+    </div>
+
+    <p class="complete-started" id="completeStarted"></p>
+
+    <div class="ref-section">
+      <h3 id="quickOutcomeLabel">Quick outcome</h3>
+      <div class="outcome-grid" id="outcomeGrid" role="group" aria-labelledby="quickOutcomeLabel"></div>
+    </div>
+
+    <form id="completeForm">
+      <label class="complete-label" for="outcomeText">Outcome / why it is being closed</label>
+      <textarea id="outcomeText" name="outcome" rows="3"
+                placeholder="Optional — what happened at this waypoint"></textarea>
+      <div class="complete-actions">
+        <button type="button" class="btn secondary" id="completeCancel">Cancel</button>
+        <button type="submit" class="btn">Mark Complete</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 (function(){
   var CATEGORIES = {
     nav: {
       label:'Navigation / Course Plotting', short:'NAV / COURSE', hex:'#EAF0FB',
-      titleHint:'e.g. Turn point Alpha', descHint:'What this waypoint means'
+      titleHint:'e.g. Turn point Alpha', descHint:'What this waypoint means',
+      outcomes:['Arrived at destination','Passed / bypassed']
     },
     hazard: {
       label:'Hazards', short:'HAZARDS', hex:'#9C74D6',
-      titleHint:'e.g. Debris field', descHint:'Hazard / area to avoid'
+      titleHint:'e.g. Debris field', descHint:'Hazard / area to avoid',
+      outcomes:['Cleared / avoided','No longer a threat']
     },
     objective: {
       label:'Objectives', short:'OBJECTIVES', hex:'#2FB574',
-      titleHint:'e.g. Rally point', descHint:'What this objective means'
+      titleHint:'e.g. Rally point', descHint:'What this objective means',
+      outcomes:['Objective complete']
     },
     hostile: {
       label:'Hostiles / Hostile Area', short:'HOSTILES', hex:'#E05265',
-      titleHint:'e.g. Hostile patrol', descHint:'Threat details'
+      titleHint:'e.g. Hostile patrol', descHint:'Threat details',
+      outcomes:['Threat neutralised','Hostile disengaged']
     },
     unknown: {
       label:'Unknown / Suspect / Investigate', short:'UNKNOWN', hex:'#E3C23E',
-      titleHint:'e.g. Unidentified signal', descHint:'What needs investigating'
+      titleHint:'e.g. Unidentified signal', descHint:'What needs investigating',
+      outcomes:['Identified','Investigated — no contact']
     },
     mission: {
       label:'Mission Objectives', short:'MISSION OBJ.', hex:'#6C8AFF',
-      titleHint:'e.g. Primary mission objective', descHint:'What this mission objective is'
+      titleHint:'e.g. Primary mission objective', descHint:'What this mission objective is',
+      outcomes:['Objective complete','Objective failed']
     }
   };
   var CAT_KEYS = Object.keys(CATEGORIES);
 
+  // Offered on every category, after its own outcomes.
+  var SHARED_OUTCOME = 'No longer required';
+
+  function outcomesFor(cat){
+    var c = CATEGORIES[cat];
+    return (c && c.outcomes ? c.outcomes : []).concat([SHARED_OUTCOME]);
+  }
+
   var STORAGE_KEY = 'ucn_nav_radar_waypoints';
-  var SCHEMA_VERSION = 1;
+  var SCHEMA_VERSION = 2;
 
   var waypoints = [];
   var openIds = Object.create(null);   // id -> true, survives re-renders
   var editingId = null;                // at most one waypoint in edit mode
   var confirmDeleteId = null;          // at most one delete awaiting confirmation
+  var completingId = null;             // waypoint the completion dialog is acting on
   var pendingFocus = null;             // {listId, id, sel} restored after render
   var storageAvailable = true;
 
@@ -646,6 +760,39 @@
     if(!el) return;
     el.textContent = msg || '';
     el.classList.toggle('warn', !!isWarn);
+  }
+
+  // Timestamps are only ever trusted as strings that Date can parse; anything
+  // else (including a v1 payload's missing field) becomes null.
+  function isoOrNull(v){
+    if(typeof v !== 'string' || !v) return null;
+    var t = Date.parse(v);
+    return isNaN(t) ? null : v;
+  }
+
+  function isDone(w){ return !!w.completedAt; }
+
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function formatTime(iso){
+    if(!iso) return '—';
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return '—';
+    var hh = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    var now = new Date();
+    var sameDay = d.getFullYear() === now.getFullYear() &&
+                  d.getMonth() === now.getMonth() &&
+                  d.getDate() === now.getDate();
+    return sameDay ? hh : (d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + hh);
+  }
+
+  function formatDuration(fromIso, toIso){
+    if(!fromIso || !toIso) return '';
+    var ms = Date.parse(toIso) - Date.parse(fromIso);
+    if(isNaN(ms) || ms < 0) return '';
+    var mins = Math.round(ms / 60000);
+    if(mins < 60) return mins + 'm';
+    return Math.floor(mins / 60) + 'h ' + String(mins % 60).padStart(2,'0') + 'm';
   }
 
   function newId(){
@@ -678,7 +825,12 @@
       number: number,
       title: title,
       sector: String(raw.sector == null ? '' : raw.sector).trim(),
-      description: String(raw.description == null ? '' : raw.description).trim()
+      description: String(raw.description == null ? '' : raw.description).trim(),
+      // v2. Additive with safe defaults, so v1 payloads load untouched: an
+      // older waypoint simply has no start time and renders it as a dash.
+      createdAt: isoOrNull(raw.createdAt),
+      completedAt: isoOrNull(raw.completedAt),
+      outcome: String(raw.outcome == null ? '' : raw.outcome).trim()
     };
   }
 
@@ -758,6 +910,39 @@
         '<ul class="wp-list" id="list-' + cat + '" aria-label="' + escapeHtml(c.label) + ' waypoints"></ul>';
       main.appendChild(panel);
     });
+
+    buildHistoryUi(tabNav, main);
+  }
+
+  // A non-category tab, like All. selectTab() works off data-cat / panel-<key>,
+  // so it needs no special handling there.
+  function buildHistoryUi(tabNav, main){
+    var tab = document.createElement('button');
+    tab.className = 'tab-btn';
+    tab.type = 'button';
+    tab.setAttribute('role','tab');
+    tab.id = 'tab-history';
+    tab.setAttribute('data-cat','history');
+    tab.setAttribute('aria-selected','false');
+    tab.setAttribute('aria-controls','panel-history');
+    tab.tabIndex = -1;
+    tab.innerHTML = '<span class="dot" style="background:var(--muted)"></span>HISTORY';
+    tabNav.appendChild(tab);
+
+    var panel = document.createElement('section');
+    panel.className = 'panel';
+    panel.id = 'panel-history';
+    panel.setAttribute('role','tabpanel');
+    panel.setAttribute('aria-labelledby','tab-history');
+    panel.tabIndex = 0;
+    panel.hidden = true;
+    panel.innerHTML =
+      '<h2 class="panel-title"><span class="swatch" style="background:var(--muted)"></span>History</h2>' +
+      '<p class="empty-note" style="margin-top:-8px;">Completed waypoints, most recently finished first. ' +
+        'Restore one to put it back with the active work.</p>' +
+      '<p class="form-note" id="historyCount" role="status" aria-live="polite"></p>' +
+      '<ul class="wp-list" id="list-history" aria-label="Completed waypoints"></ul>';
+    main.appendChild(panel);
   }
 
   /* ---------- rendering ---------- */
@@ -789,10 +974,30 @@
     }
     return (
       '<div class="actions">' +
+        (isDone(w)
+          ? '<button class="btn secondary btn-restore" type="button">Restore</button>'
+          : '<button class="btn btn-complete" type="button">Complete</button>') +
         '<button class="btn secondary btn-edit" type="button">Edit</button>' +
         '<button class="btn secondary btn-delete" type="button">Delete</button>' +
       '</div>'
     );
+  }
+
+  // Start / finish / duration, shown inside an expanded waypoint.
+  function timingHtml(w){
+    var bits = '<span>Started ' + escapeHtml(formatTime(w.createdAt)) + '</span>';
+    if(isDone(w)){
+      var dur = formatDuration(w.createdAt, w.completedAt);
+      bits += '<span>Completed ' + escapeHtml(formatTime(w.completedAt)) + '</span>' +
+              (dur ? '<span>Took ' + escapeHtml(dur) + '</span>' : '');
+    }
+    return '<div class="timing">' + bits + '</div>';
+  }
+
+  function outcomeHtml(w){
+    if(!isDone(w) || !w.outcome) return '';
+    return '<div class="outcome"><span class="outcome-label">Outcome</span>' +
+           escapeHtml(w.outcome) + '</div>';
   }
 
   function itemHtml(w, listKey){
@@ -802,19 +1007,25 @@
     var isOpen = !!openIds[w.id];
     var detailsId = 'det-' + listKey + '-' + w.id;
 
+    var done = isDone(w);
+
     var body = (editingId === w.id)
       ? editFormHtml(w)
       : ('<div class="desc">' +
            (w.description ? escapeHtml(w.description) : '<em>No description provided.</em>') +
-         '</div>' + actionsHtml(w));
+         '</div>' + timingHtml(w) + outcomeHtml(w) + actionsHtml(w));
 
     return (
-      '<li class="wp-item' + (isOpen ? ' open' : '') + '" data-id="' + escapeHtml(w.id) + '" style="border-left-color:' + hex + '">' +
+      '<li class="wp-item' + (isOpen ? ' open' : '') + (done ? ' done' : '') +
+          '" data-id="' + escapeHtml(w.id) + '" style="border-left-color:' + hex + '">' +
         '<button class="row" type="button" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + detailsId + '">' +
           '<span class="num">#' + escapeHtml(w.number) + '</span>' +
           '<span class="title">' + escapeHtml(w.title) + '</span>' +
-          '<span class="sr-only">, category: ' + escapeHtml(catLabel) + '</span>' +
-          (w.sector ? '<span class="sector">' + escapeHtml(w.sector) + '</span>' : '') +
+          '<span class="sr-only">, category: ' + escapeHtml(catLabel) +
+            (done ? ', completed' : '') + '</span>' +
+          (done
+            ? '<span class="done-tag" aria-hidden="true">&#10003; ' + escapeHtml(formatTime(w.completedAt)) + '</span>'
+            : (w.sector ? '<span class="sector">' + escapeHtml(w.sector) + '</span>' : '')) +
           '<span class="caret" aria-hidden="true">&#9656;</span>' +
         '</button>' +
         '<div class="details" id="' + detailsId + '">' +
@@ -828,6 +1039,9 @@
   // Point an empty list at whatever the next useful action is, rather than
   // just stating that it is empty.
   function emptyMessage(listKey){
+    if(listKey === 'history'){
+      return 'No waypoints completed yet. Mark one complete and it will be logged here.';
+    }
     if(listKey === 'all'){
       return waypoints.length === 0
         ? 'Nothing logged yet. Pick a category tab above to add your first waypoint.'
@@ -842,13 +1056,24 @@
     var container = document.getElementById('list-' + listKey);
     if(!container) return;
 
-    var items = listKey === 'all'
-      ? waypoints.slice()
-      : waypoints.filter(function(w){ return w.category === listKey; });
+    var items = listKey === 'all'      ? waypoints.slice()
+              : listKey === 'history'  ? waypoints.filter(isDone)
+              : waypoints.filter(function(w){ return w.category === listKey; });
 
-    items.sort(function(a,b){
-      return (a.number || '').localeCompare(b.number || '', undefined, {numeric:true});
-    });
+    if(listKey === 'history'){
+      // Most recently finished first.
+      items.sort(function(a,b){
+        return Date.parse(b.completedAt) - Date.parse(a.completedAt);
+      });
+    }else{
+      // Active work first, in waypoint order; finished work sinks below it.
+      items.sort(function(a,b){
+        var da = isDone(a), db = isDone(b);
+        if(da !== db) return da ? 1 : -1;
+        if(da) return Date.parse(b.completedAt) - Date.parse(a.completedAt);
+        return (a.number || '').localeCompare(b.number || '', undefined, {numeric:true});
+      });
+    }
 
     if(items.length === 0){
       container.innerHTML = '<li class="empty-note">' + emptyMessage(listKey) + '</li>';
@@ -861,7 +1086,16 @@
   function render(){
     renderList('all');
     CAT_KEYS.forEach(renderList);
+    renderList('history');
+    updateHistoryCount();
     restoreFocus();
+  }
+
+  function updateHistoryCount(){
+    var el = document.getElementById('historyCount');
+    if(!el) return;
+    var n = waypoints.filter(isDone).length;
+    el.textContent = n === 0 ? '' : n + ' completed.';
   }
 
   function restoreFocus(){
@@ -891,7 +1125,8 @@
       number: data.number,
       title: data.title,
       sector: data.sector,
-      description: data.description
+      description: data.description,
+      createdAt: new Date().toISOString()
     });
     if(!w) return;
     var dup = duplicateNumber(cat, w.number, null);
@@ -921,6 +1156,27 @@
     setNotice(dup
       ? 'Saved #' + number + ' — note another waypoint in this category already uses that number.'
       : 'Waypoint #' + number + ' saved.', dup);
+  }
+
+  function completeWaypoint(id, outcome){
+    var w = findWaypoint(id);
+    if(!w) return;
+    w.completedAt = new Date().toISOString();
+    w.outcome = String(outcome || '').trim();
+    saveWaypoints();
+    render();
+    setNotice('Waypoint #' + w.number + ' marked complete.');
+  }
+
+  // Non-destructive, so no confirmation. The outcome text is kept rather than
+  // cleared, so re-completing offers what was written before.
+  function restoreWaypoint(id){
+    var w = findWaypoint(id);
+    if(!w) return;
+    w.completedAt = null;
+    saveWaypoints();
+    render();
+    setNotice('Waypoint #' + w.number + ' restored to active.');
   }
 
   function deleteWaypoint(id){
@@ -996,6 +1252,15 @@
         }
         if(e.target.closest('.btn-delete-confirm')){
           deleteWaypoint(id);
+          return;
+        }
+        if(e.target.closest('.btn-complete')){
+          openCompleteDialog(id, list.id);
+          return;
+        }
+        if(e.target.closest('.btn-restore')){
+          pendingFocus = {listId:list.id, id:id, sel:'button.row'};
+          restoreWaypoint(id);
           return;
         }
         if(e.target.closest('.btn-edit')){
@@ -1130,27 +1395,29 @@
 
   var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), textarea, select, [tabindex]:not([tabindex="-1"])';
 
-  function initModal(){
-    var overlay = document.getElementById('refOverlay');
+  // Shared modal plumbing: focus trap, Escape, overlay click, body scroll lock
+  // and focus restore. Used by both Quick Reference and the completion dialog.
+  function createDialog(overlayId, opts){
+    opts = opts || {};
+    var overlay = document.getElementById(overlayId);
     var dialog = overlay.querySelector('.modal');
-    var openBtn = document.getElementById('quickRefBtn');
-    var closeBtn = document.getElementById('closeRefBtn');
     var lastFocused = null;
 
     function open(){
       lastFocused = document.activeElement;
       overlay.classList.add('open');
       document.body.classList.add('modal-open');
-      closeBtn.focus();
+      var target = opts.initialFocus && opts.initialFocus();
+      if(target && target.focus) target.focus();
     }
     function close(){
+      if(!overlay.classList.contains('open')) return;
       overlay.classList.remove('open');
       document.body.classList.remove('modal-open');
+      if(opts.onClose) opts.onClose();
       if(lastFocused && lastFocused.focus) lastFocused.focus();
     }
 
-    openBtn.addEventListener('click', open);
-    closeBtn.addEventListener('click', close);
     overlay.addEventListener('click', function(e){ if(e.target === overlay) close(); });
 
     document.addEventListener('keydown', function(e){
@@ -1166,6 +1433,78 @@
       if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
       else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
     });
+
+    return { open: open, close: close };
+  }
+
+  var completeDialog = null;
+  var openCompleteDialog = null;      // assigned by initCompleteDialog
+  var completingListId = null;        // list the Complete button was pressed in
+
+  function initCompleteDialog(){
+    var titleEl   = document.getElementById('completeTitle');
+    var startedEl = document.getElementById('completeStarted');
+    var gridEl    = document.getElementById('outcomeGrid');
+    var textEl    = document.getElementById('outcomeText');
+    var form      = document.getElementById('completeForm');
+
+    completeDialog = createDialog('completeOverlay', {
+      // Focus the text box rather than an action button: the whole point of the
+      // dialog is that Complete gets pressed by accident, so a stray Enter must
+      // not finish the job for you.
+      initialFocus: function(){ return textEl; },
+      onClose: function(){ completingId = null; completingListId = null; }
+    });
+
+    function submit(outcome){
+      var id = completingId, listId = completingListId;
+      completeDialog.close();        // clears completingId via onClose
+      if(!id) return;
+      // Land focus back on the row once the re-render replaces these nodes.
+      if(listId) pendingFocus = {listId:listId, id:id, sel:'button.row'};
+      completeWaypoint(id, outcome);
+    }
+
+    gridEl.addEventListener('click', function(e){
+      var btn = e.target.closest('.outcome-btn');
+      if(!btn) return;
+      var label = btn.getAttribute('data-outcome');
+      var typed = textEl.value.trim();
+      // One tap finishes it, but never at the cost of text already typed.
+      submit(typed ? label + ' — ' + typed : label);
+    });
+
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      submit(textEl.value);
+    });
+
+    document.getElementById('completeCancel').addEventListener('click', completeDialog.close);
+    document.getElementById('completeCancelX').addEventListener('click', completeDialog.close);
+
+    openCompleteDialog = function(id, listId){
+      var w = findWaypoint(id);
+      if(!w) return;
+      completingId = id;
+      completingListId = listId || null;
+      titleEl.textContent = 'Complete #' + w.number + ' — ' + w.title;
+      startedEl.textContent = 'Started ' + formatTime(w.createdAt);
+      // A previously written outcome survives a restore, so offer it back.
+      textEl.value = w.outcome || '';
+      gridEl.innerHTML = outcomesFor(w.category).map(function(o){
+        return '<button type="button" class="btn secondary outcome-btn" data-outcome="' +
+               escapeHtml(o) + '">' + escapeHtml(o) + '</button>';
+      }).join('');
+      completeDialog.open();
+    };
+  }
+
+  function initModal(){
+    var ref = createDialog('refOverlay', {
+      initialFocus: function(){ return document.getElementById('closeRefBtn'); }
+    });
+    document.getElementById('quickRefBtn').addEventListener('click', ref.open);
+    document.getElementById('closeRefBtn').addEventListener('click', ref.close);
   }
 
   /* ---------- quick reference content ---------- */
@@ -1265,6 +1604,7 @@
   initForms();
   initTransfer();
   initModal();
+  initCompleteDialog();
   buildShipGrid();
   buildCompass();
 
