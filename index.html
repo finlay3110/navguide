@@ -383,6 +383,42 @@
     margin-top:14px;
   }
 
+  /* Mission setup */
+  .mission-form{ grid-template-columns:repeat(2, 1fr); }
+  .mission-form .full{ grid-column:1 / -1; }
+  .btn.secondary.danger-text{ color:var(--warn); border-color:rgba(178,58,58,0.5); }
+  .btn.secondary.danger-text:hover{ color:var(--text); border-color:var(--warn); }
+  .mission-summary-title{
+    font-size:0.72rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--cyan);
+    margin:14px 0 8px 0;
+  }
+  .mission-row{
+    display:flex; gap:12px;
+    padding:7px 12px;
+    background:var(--input);
+    border-left:3px solid var(--orange);
+    border-radius:6px;
+    margin-bottom:6px;
+    font-size:0.82rem;
+  }
+  .mission-key{
+    min-width:110px;
+    color:var(--muted);
+    font-size:0.72rem;
+    align-self:center;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+  .mission-val{ font-weight:600; }
+  @media (max-width:640px){
+    .mission-form{ grid-template-columns:1fr; }
+    .mission-row{ flex-direction:column; gap:2px; }
+    .mission-key{ min-width:0; }
+  }
+
   .empty-note{ color:var(--muted); font-size:0.85rem; padding:10px 0; }
 
   /* Quick reference modal */
@@ -724,8 +760,44 @@
   }
 
   var STORAGE_KEY = 'ucn_nav_radar_waypoints';
-  var SCHEMA_VERSION = 2;
+  var SCHEMA_VERSION = 3;
 
+  // Mission setup. Kept as a flat top-level object rather than copied onto
+  // every waypoint: it describes the sortie, not any one waypoint.
+  var MISSION_FIELDS = [
+    { key:'date',      label:'Date',           type:'date' },
+    { key:'time',      label:'Time',           type:'time' },
+    { key:'name',      label:'Mission name',   type:'text', placeholder:'e.g. Operation Longshore' },
+    { key:'type',      label:'Mission type',   type:'text', placeholder:'e.g. Patrol, Escort, Search and rescue' },
+    { key:'navigator', label:'Navigator',      type:'text', placeholder:'Name of navigator' },
+    { key:'rank',      label:'Rank',           type:'text', placeholder:'e.g. Lt' },
+    { key:'ship',      label:'Ship',           type:'text', placeholder:'e.g. UCN Hydra' }
+  ];
+  var MISSION_KEYS = MISSION_FIELDS.map(function(f){ return f.key; });
+
+  function emptyMission(){
+    var m = {};
+    MISSION_KEYS.forEach(function(k){ m[k] = ''; });
+    return m;
+  }
+
+  // Every value is coerced to a trimmed string. Nothing from a file is ever
+  // trusted as anything other than text.
+  function normaliseMission(raw){
+    var m = emptyMission();
+    if(!raw || typeof raw !== 'object') return m;
+    MISSION_KEYS.forEach(function(k){
+      var v = raw[k];
+      if(typeof v === 'string' || typeof v === 'number') m[k] = String(v).trim();
+    });
+    return m;
+  }
+
+  function missionIsEmpty(m){
+    return MISSION_KEYS.every(function(k){ return !m[k]; });
+  }
+
+  var mission = emptyMission();
   var waypoints = [];
   var openIds = Object.create(null);   // id -> true, survives re-renders
   var editingId = null;                // at most one waypoint in edit mode
@@ -846,12 +918,15 @@
     if(!raw) return;
     try{
       var parsed = JSON.parse(raw);
-      // v0 stored a bare array; v1 stores {version, waypoints}
+      // v0 stored a bare array; v1/v2 store {version, waypoints}; v3 adds
+      // {mission}. Each addition is optional, so older payloads still load.
       var list = Array.isArray(parsed) ? parsed
                : (parsed && Array.isArray(parsed.waypoints) ? parsed.waypoints : []);
       waypoints = list.map(normaliseWaypoint).filter(Boolean);
+      mission = normaliseMission(parsed && parsed.mission);
     }catch(e){
       waypoints = [];
+      mission = emptyMission();
       setNotice('Saved waypoint data could not be read and was ignored.', true);
     }
   }
@@ -861,6 +936,7 @@
     try{
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         version: SCHEMA_VERSION,
+        mission: mission,
         waypoints: waypoints
       }));
     }catch(e){
@@ -874,6 +950,8 @@
   function buildCategoryUi(){
     var tabNav = document.getElementById('tabNav');
     var main = document.querySelector('main');
+
+    buildMissionUi(tabNav, main);
 
     CAT_KEYS.forEach(function(cat){
       var c = CATEGORIES[cat];
@@ -912,6 +990,114 @@
     });
 
     buildHistoryUi(tabNav, main);
+  }
+
+  // Mission setup: a non-category tab, like All and History. It sits first
+  // because it is what you fill in before anything gets logged.
+  function buildMissionUi(tabNav, main){
+    var tab = document.createElement('button');
+    tab.className = 'tab-btn';
+    tab.type = 'button';
+    tab.setAttribute('role','tab');
+    tab.id = 'tab-mission-setup';
+    tab.setAttribute('data-cat','mission-setup');
+    tab.setAttribute('aria-selected','false');
+    tab.setAttribute('aria-controls','panel-mission-setup');
+    tab.tabIndex = -1;
+    tab.innerHTML = '<span class="dot" style="background:var(--orange)"></span>SETUP';
+    // First tab, ahead of ALL.
+    tabNav.insertBefore(tab, tabNav.firstChild);
+
+    var panel = document.createElement('section');
+    panel.className = 'panel';
+    panel.id = 'panel-mission-setup';
+    panel.setAttribute('role','tabpanel');
+    panel.setAttribute('aria-labelledby','tab-mission-setup');
+    panel.tabIndex = 0;
+    panel.hidden = true;
+
+    var fields = MISSION_FIELDS.map(function(f){
+      var cls = (f.type === 'date' || f.type === 'time') ? '' : ' class="full"';
+      var attrs = 'type="' + f.type + '" name="' + f.key + '" id="mission-' + f.key + '"' +
+                  (f.placeholder ? ' placeholder="' + escapeHtml(f.placeholder) + '"' : '');
+      return '<label' + cls + '>' + escapeHtml(f.label) + ' <input ' + attrs + '></label>';
+    }).join('');
+
+    panel.innerHTML =
+      '<h2 class="panel-title"><span class="swatch" style="background:var(--orange)"></span>Mission Setup</h2>' +
+      '<p class="empty-note" style="margin-top:-8px;">Details of the sortie. Saved as you type, and included in every export.</p>' +
+      '<form class="wp-form mission-form" id="missionForm" aria-label="Mission setup">' +
+        fields +
+        '<div class="form-actions">' +
+          '<button type="button" class="btn secondary" id="missionNowBtn">Set date &amp; time to now</button>' +
+          '<button type="button" class="btn secondary danger-text" id="missionClearBtn">Clear setup</button>' +
+        '</div>' +
+      '</form>' +
+      '<p class="form-note" id="note-mission-setup" role="status" aria-live="polite"></p>' +
+      '<div id="missionSummary"></div>';
+    main.insertBefore(panel, main.querySelector('#panel-all'));
+  }
+
+  /* ---------- mission setup ---------- */
+
+  function fillMissionForm(){
+    MISSION_KEYS.forEach(function(k){
+      var el = document.getElementById('mission-' + k);
+      if(el && el.value !== mission[k]) el.value = mission[k];
+    });
+    renderMissionSummary();
+  }
+
+  function renderMissionSummary(){
+    var el = document.getElementById('missionSummary');
+    if(!el) return;
+    if(missionIsEmpty(mission)){
+      el.innerHTML = '<p class="empty-note"><em>No mission setup recorded.</em></p>';
+      return;
+    }
+    var rows = MISSION_FIELDS.filter(function(f){ return mission[f.key]; }).map(function(f){
+      return '<div class="mission-row">' +
+               '<span class="mission-key">' + escapeHtml(f.label) + '</span>' +
+               '<span class="mission-val">' + escapeHtml(mission[f.key]) + '</span>' +
+             '</div>';
+    }).join('');
+    el.innerHTML = '<h3 class="mission-summary-title">Recorded</h3>' + rows;
+  }
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+
+  function initMissionForm(){
+    var form = document.getElementById('missionForm');
+    if(!form) return;
+
+    // Saved as you type: mission setup is filled in under time pressure and
+    // an explicit Save is one more thing to forget.
+    form.addEventListener('input', function(e){
+      var name = e.target && e.target.name;
+      if(MISSION_KEYS.indexOf(name) === -1) return;
+      mission[name] = String(e.target.value).trim();
+      saveWaypoints();
+      renderMissionSummary();
+      setFormNote('mission-setup', 'Saved.', false);
+    });
+
+    document.getElementById('missionNowBtn').addEventListener('click', function(){
+      var d = new Date();
+      mission.date = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+      mission.time = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+      saveWaypoints();
+      fillMissionForm();
+      setFormNote('mission-setup', 'Date and time set to now.', false);
+    });
+
+    document.getElementById('missionClearBtn').addEventListener('click', function(){
+      mission = emptyMission();
+      saveWaypoints();
+      fillMissionForm();
+      setFormNote('mission-setup', 'Mission setup cleared.', true);
+    });
+
+    fillMissionForm();
   }
 
   // A non-category tab, like All. selectTab() works off data-cat / panel-<key>,
@@ -1323,11 +1509,15 @@
   /* ---------- export / import ---------- */
 
   function exportWaypoints(){
-    if(waypoints.length === 0){
-      setNotice('Nothing to export — no waypoints logged yet.', true);
+    if(waypoints.length === 0 && missionIsEmpty(mission)){
+      setNotice('Nothing to export — no mission setup or waypoints yet.', true);
       return;
     }
-    var payload = JSON.stringify({ version: SCHEMA_VERSION, waypoints: waypoints }, null, 2);
+    var payload = JSON.stringify({
+      version: SCHEMA_VERSION,
+      mission: mission,
+      waypoints: waypoints
+    }, null, 2);
     var blob = new Blob([payload], {type:'application/json'});
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -1355,6 +1545,16 @@
       return;
     }
 
+    // Waypoints merge, but mission setup is singular: adopt the imported one
+    // only when nothing has been filled in here, so an import can never
+    // silently overwrite the setup for the sortie in progress.
+    var importedMission = normaliseMission(parsed && parsed.mission);
+    var missionAdopted = false, missionIgnored = false;
+    if(!missionIsEmpty(importedMission)){
+      if(missionIsEmpty(mission)){ mission = importedMission; missionAdopted = true; }
+      else { missionIgnored = true; }
+    }
+
     var existing = Object.create(null);
     waypoints.forEach(function(w){ existing[w.id] = true; });
 
@@ -1369,10 +1569,13 @@
     });
 
     saveWaypoints();
+    if(missionAdopted) fillMissionForm();
     render();
     setNotice('Imported ' + added + ' waypoint' + (added === 1 ? '' : 's') +
-              (skipped ? ' — ' + skipped + ' entr' + (skipped === 1 ? 'y was' : 'ies were') + ' skipped as invalid.' : '.'),
-              skipped > 0);
+              (skipped ? ' — ' + skipped + ' entr' + (skipped === 1 ? 'y was' : 'ies were') + ' skipped as invalid.' : '.') +
+              (missionAdopted ? ' Mission setup adopted from the file.' : '') +
+              (missionIgnored ? ' The file also had mission setup, which was ignored because this one is already filled in.' : ''),
+              skipped > 0 || missionIgnored);
   }
 
   function initTransfer(){
@@ -1609,6 +1812,7 @@
   buildCompass();
 
   loadWaypoints();
+  initMissionForm();
   render();
   initLists();   // lists exist only after buildCategoryUi()
   selectTab('all', false);

@@ -4,16 +4,17 @@ A fan-made reference and logging tool for the United Confederation Navy (UCN) co
 
 ## What it does
 
-Lets you log waypoints (waypoint number, title, optional sector, and a description of what the waypoint means) and organises them by category across eight tabs:
+Lets you log waypoints (waypoint number, title, optional sector, and a description of what the waypoint means) and organises them by category across nine tabs:
 
-1. **All** — every logged waypoint in one place, colour-coded by category. Select any entry to expand its details.
-2. **Navigation / Course Plotting** (white) — course plotting and immediate navigation/route waypoints.
-3. **Hazards** (purple) — hazards and areas to avoid.
-4. **Objectives** (green) — general objectives.
-5. **Hostiles / Hostile Area** (red) — hostile contacts and hostile areas.
-6. **Unknown / Suspect / Investigate** (yellow) — unidentified or suspicious contacts worth investigating.
-7. **Mission Objectives** (royal blue) — dedicated mission objective waypoints.
-8. **History** — every completed waypoint, most recently finished first.
+1. **Mission Setup** — details of the sortie: date, time, mission name, mission type, navigator, rank and ship.
+2. **All** — every logged waypoint in one place, colour-coded by category. Select any entry to expand its details.
+3. **Navigation / Course Plotting** (white) — course plotting and immediate navigation/route waypoints.
+4. **Hazards** (purple) — hazards and areas to avoid.
+5. **Objectives** (green) — general objectives.
+6. **Hostiles / Hostile Area** (red) — hostile contacts and hostile areas.
+7. **Unknown / Suspect / Investigate** (yellow) — unidentified or suspicious contacts worth investigating.
+8. **Mission Objectives** (royal blue) — dedicated mission objective waypoints.
+9. **History** — every completed waypoint, most recently finished first.
 
 Each waypoint can be expanded for its full description, then **completed**, **edited** or **deleted** from its expanded view. Deleting asks for confirmation first. If you reuse a waypoint number already used in the same category, the tool logs the entry anyway and flags the clash so you can spot it.
 
@@ -35,10 +36,17 @@ A completed waypoint stays in its category tab, dimmed and struck through, sorte
 
 Waypoints record when they were logged and when they were completed, shown as start time, completion time and how long it took. Waypoints saved before this feature existed have no start time and show a dash.
 
+## Mission Setup
+
+The first tab records the sortie: date, time, mission name, mission type, navigator, rank and ship. It saves as you type — there is no Save button to forget — and **Set date & time to now** fills both from the clock. **Clear setup** empties every field.
+
+Mission setup is stored alongside the waypoints and included in every export.
+
 ## Export & Import
 
 - **Export** downloads your whole log as a JSON file (`ucn-waypoints-YYYY-MM-DD.json`).
 - **Import** reads a previously exported file and **merges** it into the current log — nothing is overwritten, and entries that don't parse as valid waypoints are skipped and reported.
+- Mission setup is singular rather than a list, so it is only adopted from an imported file when your own setup is still blank. If you have already filled it in, the file's setup is ignored and the import says so — an import can never overwrite the sortie in progress.
 
 Use these to move a log between devices or browsers, or to back it up before clearing your browser data.
 
