@@ -75,6 +75,7 @@ Accessible via the "Quick Reference" button in the header. Closes with Escape or
 - Waypoint data is stored locally in the browser (per device/browser), so it will persist between visits on the same device but won't sync across devices. If the browser blocks local storage, a banner warns you that the log won't survive closing the page.
 - Stored data carries a schema version, and logs saved by older versions of the tool are migrated automatically on load. Completion times and outcomes are included in exports.
 - Matches the standard UCN dark navy visual theme used across the rest of the tool suite.
+- The UCN roundel appears in the app header, as the browser tab icon, and on the PDF cover, all inlined as base64 PNGs. The supplied artwork is a knockout — its ring and manta are transparent holes rather than white pixels — so the header and favicon copies have those holes filled with white and only the area outside the disc left transparent. Without that the mark disappears against the navy header. The disc's own navy matches the header almost exactly, so a CSS hairline ring gives it an edge rather than recolouring the artwork.
 - Ship icons are inlined into `index.html` as SVG rather than loaded as separate files, so the tool remains a single self-contained page with no build step. They are drawn with `currentColor`, so they follow the theme's text colour instead of carrying their own.
 
 ### Adding or replacing a ship icon
