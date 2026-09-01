@@ -61,6 +61,17 @@ Accessible via the "Quick Reference" button in the header. Closes with Escape or
 - **Ordnance type colours** — Gold chevron (Torpedo/tracker), Grey/white chevron (HVLI/Slug), Orange chevron (Nuke), Purple chevron (EMP), White circle (Mine).
 - **Compass** — a bearing dial marked every 20° from 0–340, with the four cardinal bearings (0, 90, 180, 270) picked out in orange.
 
+## On an iPhone
+
+The tool is built for use on a phone mid-mission:
+
+- **Add it to your home screen** (Share → Add to Home Screen) for a full-screen app with no Safari chrome, which also recovers about 115px of vertical space. It carries the UCN roundel as its icon.
+- The tab strip is a single row you swipe sideways, and it stays pinned to the top while a long waypoint list scrolls beneath it. Selecting a tab scrolls the strip, never the page.
+- The add form is collapsed behind **+ Add Waypoint** on phones and always open on desktop, because during a mission you read the log far more often than you add to it.
+- Every control is at least 44pt, and form fields are 16px so iOS does not zoom the page when you tap into one. Pinch zoom is left enabled.
+- Layout respects the notch and home indicator in both orientations.
+- **PDF Report** opens the report in a new tab on iOS rather than downloading it, so you can save or print it from the share sheet. A file download can fail silently once the tool is installed to the home screen.
+
 ## Keyboard & accessibility
 
 - Tabs follow the standard tablist pattern: arrow keys move between categories, Home/End jump to the first/last.
