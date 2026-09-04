@@ -1,0 +1,13 @@
+{
+  "name": "ucn-navguide",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tests for the UCN Navigation & Radar tool. The tool itself is a single self-contained index.html with no build step; this package exists only to run the test suites.",
+  "scripts": {
+    "test": "node tests/run.js",
+    "measure:iphone": "node tests/tools/measure-iphone.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}

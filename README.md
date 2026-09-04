@@ -74,6 +74,22 @@ The tool is built for use on a phone mid-mission:
 - Layout respects the notch and home indicator in both orientations.
 - **PDF Report** opens the report in a new tab on iOS rather than downloading it, so you can save or print it from the share sheet. A file download can fail silently once the tool is installed to the home screen.
 
+## Running the tests
+
+The tool ships as a single `index.html` with no build step. The test suites are
+dev-only tooling and are never served.
+
+```
+npm install
+npx playwright install chromium
+npm test
+```
+
+Eight suites, around 170 checks, covering behaviour, storage and migration,
+the completion flow, mission setup, the Quick Reference accordion, ship icons,
+PDF generation and colour contrast. They run automatically on every pull
+request. See `tests/README.md`.
+
 ## Keyboard & accessibility
 
 - Tabs follow the standard tablist pattern: arrow keys move between categories, Home/End jump to the first/last.
