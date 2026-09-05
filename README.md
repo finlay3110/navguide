@@ -74,6 +74,14 @@ The tool is built for use on a phone mid-mission:
 - Layout respects the notch and home indicator in both orientations.
 - **PDF Report** opens the report in a new tab on iOS rather than downloading it, so you can save or print it from the share sheet. A file download can fail silently once the tool is installed to the home screen.
 
+## Keeping your log
+
+The log lives in this browser on this device, and nowhere else.
+
+**Install it to your home screen.** iOS clears saved website data after roughly a week without opening a site, which would empty the log with no warning. A site installed to the home screen is exempt. The tool offers this on first run — on iOS via Share → Add to Home Screen, on Android with an Install button — and the prompt goes away once you install or dismiss it. Where the browser supports it, the tool also asks for persistent storage; Safari does not honour that, which is why installing matters there.
+
+**Export is the backup.** The Mission Setup tab shows whether the log has ever been exported and whether it has changed since, and the Export button carries an amber dot whenever there are unsaved changes. Only the JSON export counts — a PDF is a report, not something you can restore from.
+
 ## Running the tests
 
 The tool ships as a single `index.html` with no build step. The test suites are
@@ -85,9 +93,9 @@ npx playwright install chromium
 npm test
 ```
 
-Eight suites, around 170 checks, covering behaviour, storage and migration,
+Nine suites, around 200 checks, covering behaviour, storage and migration,
 the completion flow, mission setup, the Quick Reference accordion, ship icons,
-PDF generation and colour contrast. They run automatically on every pull
+PDF generation, colour contrast, and backup/install data safety. They run automatically on every pull
 request. See `tests/README.md`.
 
 ## Keyboard & accessibility

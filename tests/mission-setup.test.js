@@ -33,7 +33,7 @@ const FIELDS=['date','time','name','type','navigator','rank','ship'];
   let s=await store();
   ok.push(['saved to storage without a save button', s.mission && s.mission.name==='Operation Longshore', JSON.stringify(s.mission)]);
   ok.push(['all 7 keys persisted', FIELDS.every(k=>s.mission[k]), JSON.stringify(s.mission)]);
-  ok.push(['schema bumped to v3', s.version===3, s.version]);
+  ok.push(['schema at v4', s.version===4, s.version]);
   ok.push(['summary lists values', /UCN Hydra/.test(await p.locator('#missionSummary').textContent())]);
 
   // --- survives reload ---------------------------------------------------
