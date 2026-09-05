@@ -17,6 +17,16 @@ const seed=`(function(){const add=(c,n,t)=>{const f=document.querySelector('form
     p.on('pageerror',e=>errs.push(e.message));
     await p.goto(appUrl()); await p.evaluate(seed); await p.reload();
     await p.locator('#tab-nav').click();
+    // The install nudge is first-run chrome: dismissible, and gone for good once
+    // the tool is installed. Its one-off cost is bounded separately below; the
+    // density thresholds measure the steady state the user actually works in.
+    const bannerH = await p.evaluate(() => {
+      const e = document.getElementById('installBanner');
+      return e && !e.hidden ? Math.round(e.getBoundingClientRect().height) : 0;
+    });
+    ok.push([name+': first-run install nudge costs <=60px', bannerH <= 60, bannerH+'px']);
+    await p.locator('#installDismiss').click();
+
     const m=await p.evaluate(()=>({
       top:document.querySelector('#list-nav .wp-item').getBoundingClientRect().top,
       vh:innerHeight,

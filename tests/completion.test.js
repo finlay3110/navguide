@@ -57,7 +57,7 @@ const seed = `(function(){
   ok.push(['one tap completes', !!done1.completedAt]);
   ok.push(['outcome stored verbatim', done1.outcome==='Arrived at destination', done1.outcome]);
   ok.push(['createdAt recorded', !!done1.createdAt]);
-  ok.push(['schema at v3', s2.version===3, s2.version]);
+  ok.push(['schema at v4', s2.version===4, s2.version]);
 
   // --- 3. Typed text is preserved when a quick button is tapped -----------
   await ensureOpen(p.locator('#panel-nav .wp-item', { hasText:'Turn point Bravo' }));

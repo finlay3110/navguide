@@ -52,7 +52,7 @@ const { chromium, launchOpts, appUrl, artifact } = require('./lib/harness');
   ok.push(['edit saved', (await page.locator('#list-nav .wp-item .title').first().textContent())==='Turn Bravo']);
 
   const stored = await page.evaluate(()=>localStorage.getItem('ucn_nav_radar_waypoints'));
-  ok.push(['stored with version 3', JSON.parse(stored).version===3 && JSON.parse(stored).waypoints.length===1]);
+  ok.push(['stored with version 4', JSON.parse(stored).version===4 && JSON.parse(stored).waypoints.length===1]);
 
   await page.evaluate(()=>localStorage.setItem('ucn_nav_radar_waypoints', JSON.stringify([
     {id:'old1',category:'hostile',number:'7',title:'Legacy',sector:'',description:'from v0'},
