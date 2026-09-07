@@ -1,6 +1,6 @@
-const { chromium, launchOpts, appUrl, artifact } = require('./lib/harness');
+const { launch, appUrl, artifact } = require('./lib/harness');
 (async () => {
-  const browser = await chromium.launch(launchOpts());
+  const browser = await launch();
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));

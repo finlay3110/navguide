@@ -1,6 +1,6 @@
 // Reports the layout numbers behind the iPhone targets rather than
 // asserting them; iphone.test.js is what enforces the thresholds.
-const { chromium, launchOpts, appUrl } = require('../lib/harness');
+const { launch, appUrl } = require('../lib/harness');
 // Safari's *visible* viewport is shorter than the device height once the URL
 // bar and tab bar are on screen.
 const TARGETS=[
@@ -9,7 +9,7 @@ const TARGETS=[
   ['iPhone 14 Pro Max',430, 932-140],
 ];
 (async()=>{
-  const b=await chromium.launch(launchOpts());
+  const b=await launch();
   for(const [name,w,h] of TARGETS){
     const p=await b.newPage({viewport:{width:w,height:h},deviceScaleFactor:3,isMobile:true,hasTouch:true});
     await p.goto(appUrl());

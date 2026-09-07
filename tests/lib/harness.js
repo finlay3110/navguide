@@ -7,17 +7,44 @@
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
-const { chromium } = require('playwright');
+const playwright = require('playwright');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const ARTIFACTS = path.join(__dirname, '..', '.artifacts');
+
+// The tool is used on an iPhone, so WebKit is the engine that matters; Chromium
+// stays the default because it is what most dev environments have to hand.
+const ENGINE = process.env.UCN_BROWSER || 'chromium';
+
+function engine() { return ENGINE; }
+function isChromium() { return ENGINE === 'chromium'; }
 
 // Playwright finds its own browser everywhere except sandboxes that ship one
 // at a fixed path; UCN_CHROMIUM covers that case without hardcoding it.
 function launchOpts(extra) {
   const opts = Object.assign({}, extra);
-  if (process.env.UCN_CHROMIUM) opts.executablePath = process.env.UCN_CHROMIUM;
+  if (isChromium() && process.env.UCN_CHROMIUM) opts.executablePath = process.env.UCN_CHROMIUM;
   return opts;
+}
+
+// One place decides the engine, so suites never name one themselves.
+async function launch(extra) {
+  const type = playwright[ENGINE];
+  if (!type) throw new Error('Unknown UCN_BROWSER "' + ENGINE + '" (expected chromium or webkit)');
+  try {
+    return await type.launch(launchOpts(extra));
+  } catch (err) {
+    throw new Error(
+      'Could not launch ' + ENGINE + '. Install it with `npx playwright install ' + ENGINE + '`.\n' +
+      'Some sandboxes block cdn.playwright.dev, in which case only the engine already present can run ' +
+      '(set UCN_CHROMIUM to its executable).\n\nUnderlying error: ' + err.message);
+  }
+}
+
+// Engine-specific checks are recorded as skipped rather than dropped, so a run
+// on one engine never silently loses coverage the other has.
+function skip(ok, name, why) {
+  ok.push([name + '  [skipped on ' + ENGINE + ': ' + why + ']', true]);
 }
 
 function appUrl() {
@@ -91,6 +118,6 @@ function report(ok, errors) {
 }
 
 module.exports = {
-  chromium, launchOpts, appUrl, artifact,
+  launch, engine, isChromium, skip, launchOpts, appUrl, artifact,
   watch, openApp, ensureOpen, seedWaypoints, readStore, report,
 };

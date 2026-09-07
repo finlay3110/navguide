@@ -1,4 +1,4 @@
-const { chromium, launchOpts, appUrl, artifact } = require('./lib/harness');
+const { launch, appUrl, artifact } = require('./lib/harness');
 
 const seed = `(function(){
   const add=(c,n,t,s,d)=>{const f=document.querySelector('form.wp-form[data-cat="'+c+'"]');
@@ -10,7 +10,7 @@ const seed = `(function(){
 })()`;
 
 (async () => {
-  const b = await chromium.launch(launchOpts());
+  const b = await launch();
   const p = await b.newPage({ viewport:{width:1000,height:900} });
   const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   const ok=[];

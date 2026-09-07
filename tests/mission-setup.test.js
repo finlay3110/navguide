@@ -1,8 +1,8 @@
-const { chromium, launchOpts, appUrl, artifact } = require('./lib/harness');
+const { launch, appUrl, artifact } = require('./lib/harness');
 const FIELDS=['date','time','name','type','navigator','rank','ship'];
 
 (async () => {
-  const b=await chromium.launch(launchOpts());
+  const b=await launch();
   const p=await b.newPage({viewport:{width:1000,height:900}});
   const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   const ok=[];
