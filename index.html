@@ -174,8 +174,21 @@
   }
   .install-banner strong{ color:var(--cyan); }
   @media (max-width:640px){
-    .install-banner{ padding:8px 10px; font-size:0.72rem; gap:8px; }
+    .install-banner{
+      padding:8px 10px;
+      font-size:0.72rem;
+      gap:8px;
+      flex-wrap:nowrap;      /* WebKit wrapped the buttons to a second row */
+      align-items:center;
+    }
+    .banner-actions{ margin-left:auto; }
     .banner-actions .btn{ min-height:32px; padding:5px 10px; font-size:0.62rem; }
+    /* Icon-sized dismiss so the message keeps the width instead of the button. */
+    .banner-actions .btn.icon-only{
+      width:32px; padding:0;
+      font-size:1rem; line-height:1;
+      display:flex; align-items:center; justify-content:center;
+    }
   }
 
   .backup-state{ margin:0 0 10px 0; font-size:0.72rem; min-height:0; }
@@ -1803,9 +1816,18 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
     if(isStandalone() || installDismissed()) return;
 
     var narrow = window.matchMedia && window.matchMedia('(max-width:640px)').matches;
+
+    // A word-labelled Dismiss takes width the message needs on a phone.
+    var dismiss = document.getElementById('installDismiss');
+    dismiss.setAttribute('aria-label', 'Dismiss');
+    if(narrow){
+      dismiss.textContent = '\u00D7';
+      dismiss.classList.add('icon-only');
+    }
+
     if(isIosDevice()){
       text.innerHTML = narrow
-        ? '<strong>Share \u2192 Add to Home Screen</strong> keeps this log from being cleared by iOS.'
+        ? '<strong>Share \u2192 Add to Home Screen</strong> keeps this log safe.'
         : 'iOS clears saved website data after about a week without opening the site, which would empty this log. ' +
           'Add it to your Home Screen to keep it: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.';
       banner.title = 'iOS clears saved website data after about a week without opening the site. ' +
