@@ -20,8 +20,30 @@ npm test contrast pdf
 node tests/iphone.test.js        # suites also run standalone
 ```
 
+## Engines
+
+The tool is used on an iPhone, so **WebKit is the engine that matters** — it is
+the same family as Safari, and it is where the iOS-specific work lives: the
+`position:fixed` dialog scroll lock, `100dvh`, the blob-URL PDF open,
+`navigator.standalone`, and native date/time inputs.
+
+CI runs the whole suite on **both** Chromium and WebKit and requires both to
+pass. Locally, Chromium is the default because it is what most environments
+have to hand:
+
+```
+npm test                      # chromium
+UCN_BROWSER=webkit npm test   # webkit
+```
+
+A few checks depend on Chromium-only APIs — CDP `Page.getAppManifest` and
+`beforeinstallprompt`. They are reported as **skipped** on other engines rather
+than dropped, so a run never silently loses coverage. The iOS install wording
+is asserted on every engine.
+
 If your environment ships a Chromium that Playwright did not install itself,
-point at it: `UCN_CHROMIUM=/path/to/chrome npm test`.
+point at it: `UCN_CHROMIUM=/path/to/chrome npm test`. Some sandboxes block
+`cdn.playwright.dev`, so only a pre-installed engine can run there.
 
 `npm run measure:iphone` prints the layout numbers behind the iPhone targets
 (header height, tab rows, where the first waypoint lands) without asserting

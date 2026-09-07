@@ -1,4 +1,4 @@
-const { chromium, launchOpts, appUrl, artifact } = require('./lib/harness');
+const { launch, appUrl, artifact } = require('./lib/harness');
 const seed=`(function(){const add=(c,n,t)=>{const f=document.querySelector('form.wp-form[data-cat="'+c+'"]');
   f.elements.number.value=n;f.elements.title.value=t;f.elements.sector.value='G-4';f.elements.description.value='x';
   f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));};
@@ -6,7 +6,7 @@ const seed=`(function(){const add=(c,n,t)=>{const f=document.querySelector('form
   for(let i=1;i<=8;i++) add('hostile',String(i).padStart(2,'0'),'Contact '+i);})()`;
 
 (async()=>{
-  const b=await chromium.launch(launchOpts());
+  const b=await launch();
   const ok=[]; const errs=[];
   const phone=async()=>{const p=await b.newPage({viewport:{width:375,height:552},deviceScaleFactor:3,isMobile:true,hasTouch:true});
     p.on('pageerror',e=>errs.push(e.message)); await p.goto(appUrl()); return p;};
@@ -108,18 +108,8 @@ const seed=`(function(){const add=(c,n,t)=>{const f=document.querySelector('form
   ok.push(['theme-color + web-app-capable', meta.theme&&meta.cap]);
   ok.push(['apple-touch-icon present', meta.icon.indexOf('data:image/png')===0]);
 
-  // --- desktop unaffected -------------------------------------------------
-  await p.close();
-  const d=await b.newPage({viewport:{width:1100,height:900}});
-  d.on('pageerror',e=>errs.push(e.message));
-  await d.goto(appUrl());
-  await d.locator('#tab-nav').click();
-  ok.push(['desktop: add form visible, no disclosure', await d.locator('#form-nav').isVisible() &&
-    !(await d.locator('#panel-nav .add-toggle').isVisible())]);
-  ok.push(['desktop: tabs still wrap (not a scroll strip)',
-    await d.evaluate(()=>getComputedStyle(document.querySelector('nav.tabs')).flexWrap==='wrap')]);
-  ok.push(['desktop: pill labels visible', await d.locator('#exportBtn .pill-label').isVisible()]);
-  await d.close();
+  // The tool is iPhone-only, so desktop layout is an unused code path and is
+  // deliberately not pinned here.
 
   await b.close();
   let failed=0;

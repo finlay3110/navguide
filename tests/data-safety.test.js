@@ -1,7 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { chromium, launchOpts, appUrl, artifact, watch, seedWaypoints, readStore, report } = require('./lib/harness');
+const { launch, appUrl, artifact, watch, seedWaypoints, readStore, report, isChromium, skip } = require('./lib/harness');
 
 const INDEX = path.resolve(__dirname, '..', 'index.html');
 
@@ -18,7 +18,7 @@ function serve() {
 }
 
 (async () => {
-  const b = await chromium.launch(launchOpts());
+  const b = await launch();
   const ok = [], errors = [];
 
   // ---- backup state ------------------------------------------------------
@@ -86,6 +86,10 @@ function serve() {
   await p.goto(appUrl());
   ok.push(['install banner shown when not installed', await p.locator('#installBanner').isVisible()]);
 
+  if (!isChromium()) {
+    skip(ok, 'Install button offered via beforeinstallprompt', 'Chromium-only API');
+  }
+
   await p.locator('#installDismiss').click();
   ok.push(['dismiss hides it', !(await p.locator('#installBanner').isVisible())]);
   await p.reload();
@@ -131,6 +135,15 @@ function serve() {
   await p.close();
 
   // ---- manifest ----------------------------------------------------------
+  if (!isChromium()) {
+    skip(ok, 'manifest parses with no critical errors', 'CDP Page.getAppManifest is Chromium-only');
+    skip(ok, 'manifest is standalone with the brand colours', 'CDP Page.getAppManifest is Chromium-only');
+    skip(ok, 'manifest ships an icon >=144px (Chrome install minimum)', 'CDP Page.getAppManifest is Chromium-only');
+    await b.close();
+    report(ok, errors);
+    return;
+  }
+
   const { srv, url } = await serve();
   p = await b.newPage();
   watch(p, errors);

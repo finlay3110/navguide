@@ -9,6 +9,17 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    # The tool is used on an iPhone, so WebKit is the engine that actually
+    # matters. Chromium stays in the matrix because a few checks depend on
+    # Chromium-only APIs (CDP, beforeinstallprompt) and are skipped elsewhere.
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+
+    name: test (${{ matrix.browser }})
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,8 +30,9 @@ jobs:
 
       - run: npm ci
 
-      # Only Chromium is needed; --with-deps pulls the system libraries it
-      # requires on a bare runner.
-      - run: npx playwright install --with-deps chromium
+      # --with-deps pulls the system libraries the engine needs on a bare runner.
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
 
       - run: npm test
+        env:
+          UCN_BROWSER: ${{ matrix.browser }}
