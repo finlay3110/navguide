@@ -42,6 +42,16 @@ The first tab records the sortie: date, time, mission name, mission type, naviga
 
 Mission setup is stored alongside the waypoints and included in every export.
 
+### Starting a new mission
+
+Waypoints are not tied to a mission, so without a boundary every category tab and **History** would keep accumulating across sorties — and the PDF cover would print one mission's name over a report containing all of them.
+
+**New mission** clears the log and the setup so the tool only ever holds the sortie in progress; past missions live in the JSON files you exported. It confirms first, showing how much will be cleared, and:
+
+- If there are changes that have not been exported, it says so and offers **Export, then start**, which writes the mission out before clearing it.
+- If the log was already exported, it tells you when, so you know it is recoverable.
+- Cancel and Escape leave everything untouched, and the confirmation opens with focus on Cancel rather than the destructive action.
+
 ## Export & Import
 
 - **PDF Report** produces a printable mission report: cover sheet, clickable table of contents, mission setup, waypoint summary and per-category tables, waypoint detail, the completed log with outcomes and durations, and the quick reference.
@@ -93,9 +103,10 @@ npx playwright install chromium
 npm test
 ```
 
-Nine suites, around 200 checks, covering behaviour, storage and migration,
-the completion flow, mission setup, the Quick Reference accordion, ship icons,
-PDF generation, colour contrast, and backup/install data safety. They run automatically on every pull
+Ten suites, around 220 checks, covering behaviour, storage and migration,
+the completion flow, mission setup and mission boundaries, the Quick Reference
+accordion, ship icons, PDF generation, colour contrast, and backup/install
+data safety. They run automatically on every pull
 request. See `tests/README.md`.
 
 ## Keyboard & accessibility
