@@ -23,7 +23,11 @@ const FIELDS=['date','time','name','type','navigator','rank','ship'];
   ok.push(['empty state shown', /No mission setup recorded/.test(await p.locator('#missionSummary').textContent())]);
 
   // --- saves as you type -------------------------------------------------
+  // Name and type are pickers now; these values are not on the operations list,
+  // so they go through the Other path, which is the freetext case worth pinning.
+  await p.locator('#mission-name-select').selectOption('__other__');
   await p.locator('#mission-name').fill('Operation Longshore');
+  await p.locator('#mission-type-select').selectOption('__other__');
   await p.locator('#mission-type').fill('Escort');
   await p.locator('#mission-navigator').fill('Fin Tetra');
   await p.locator('#mission-rank').fill('Lt');

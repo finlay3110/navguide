@@ -40,6 +40,10 @@ Waypoints record when they were logged and when they were completed, shown as st
 
 The first tab records the sortie: date, time, mission name, mission type, navigator, rank and ship. It saves as you type — there is no Save button to forget — and **Set date & time to now** fills both from the clock. **Clear setup** empties every field.
 
+**Mission name** is a picker of the 32 known operations, grouped by type — Military, Exploration, Diplomacy and Intrigue. Choosing one fills in the mission type for you, since the operation determines it: pick OPERATION TEDDER and the type becomes Military. **Mission type** is a picker too, for the sorties that aren't on the list.
+
+Both pickers end with **Other…**, which reveals a text box for anything not listed — a new operation, a training run, or a type the list doesn't cover. Choosing an operation after typing something replaces the typed value, and a log imported with an operation the tool doesn't know reopens in the text box with the name intact rather than being silently dropped.
+
 Mission setup is stored alongside the waypoints and included in every export.
 
 ### Starting a new mission
@@ -103,10 +107,10 @@ npx playwright install chromium
 npm test
 ```
 
-Ten suites, around 220 checks, covering behaviour, storage and migration,
-the completion flow, mission setup and mission boundaries, the Quick Reference
-accordion, ship icons, PDF generation, colour contrast, and backup/install
-data safety. They run automatically on every pull
+Eleven suites, around 215 checks, covering behaviour, storage and migration,
+the completion flow, mission setup, the operations picker, mission boundaries,
+the Quick Reference accordion, ship icons, PDF generation, colour contrast, and
+backup/install data safety. They run automatically on every pull
 request. See `tests/README.md`.
 
 ## Keyboard & accessibility

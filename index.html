@@ -486,6 +486,9 @@
   .mission-form .full{ grid-column:1 / -1; }
   .btn.secondary.danger-text{ color:var(--warn); border-color:rgba(178,58,58,0.5); }
   .btn.secondary.danger-text:hover{ color:var(--text); border-color:var(--warn); }
+  .mission-other[hidden]{ display:none; }
+  .mission-form select{ width:100%; }
+
   .mission-summary-title{
     font-size:0.72rem;
     letter-spacing:0.06em;
@@ -1401,16 +1404,85 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
   // Mission setup. Kept as a flat top-level object rather than copied onto
   // every waypoint: it describes the sortie, not any one waypoint.
+  // The known operations, grouped by type in the picker. Choosing one fills in
+  // the mission type, since the type follows from the operation.
+  var MISSION_OPERATIONS = [
+    { name:"OPERATION TEDDER", type:"Military" },
+    { name:"ITHAKA MINING FACILITY", type:"Military" },
+    { name:"OPERATION ALCHEMIST", type:"Military" },
+    { name:"OPERATION CLAYMORE", type:"Military" },
+    { name:"OPERATION COPIAPO", type:"Military" },
+    { name:"OPERATION HANUMAN", type:"Military" },
+    { name:"OPERATION MENDICANT", type:"Military" },
+    { name:"OPERATION QUICKSTEP", type:"Military" },
+    { name:"OPERATION SILK ROAD", type:"Military" },
+    { name:"OPERATION TECUMSEH", type:"Military" },
+    { name:"OPERATION VIA MARIS", type:"Military" },
+    { name:"OPERATION AMUNDSEN", type:"Exploration" },
+    { name:"OPERATION OBELISK", type:"Exploration" },
+    { name:"OPERATION SARGASSO", type:"Exploration" },
+    { name:"OPERATION ADAMAN", type:"Exploration" },
+    { name:"OPERATION MARCONI", type:"Exploration" },
+    { name:"OPERATION SISTEMA", type:"Exploration" },
+    { name:"OPERATION VANGUARD", type:"Exploration" },
+    { name:"OPERATION REDENTOR", type:"Diplomacy" },
+    { name:"OPERATION BARATARIA", type:"Diplomacy" },
+    { name:"OPERATION CLARITY", type:"Diplomacy" },
+    { name:"OPERATION KISMET", type:"Diplomacy" },
+    { name:"OPERATION PHILBY", type:"Diplomacy" },
+    { name:"OPERATION PITCHFORK", type:"Diplomacy" },
+    { name:"TERRA NOVAN DIPLOMATIC INCIDENT", type:"Diplomacy" },
+    { name:"OPERATION ANTIMONY", type:"Intrigue" },
+    { name:"OPERATION CAMINO", type:"Intrigue" },
+    { name:"OPERATION EURYDICE", type:"Intrigue" },
+    { name:"OPERATION MOCKINGBIRD", type:"Intrigue" },
+    { name:"OPERATION TELEGRAM", type:"Intrigue" },
+    { name:"OPERATION ARGUS", type:"Intrigue" },
+    { name:"OPERATION RECOIL", type:"Intrigue" }
+  ];
+
+  var OPERATION_TYPES = [];
+  MISSION_OPERATIONS.forEach(function(o){
+    if(OPERATION_TYPES.indexOf(o.type) === -1) OPERATION_TYPES.push(o.type);
+  });
+
+  function typeForOperation(name){
+    for(var i = 0; i < MISSION_OPERATIONS.length; i++){
+      if(MISSION_OPERATIONS[i].name === name) return MISSION_OPERATIONS[i].type;
+    }
+    return '';
+  }
+
+  // Anything not on the list is still allowed: every picker carries an Other
+  // option that reveals a free text field.
+  var OTHER = '__other__';
+
   var MISSION_FIELDS = [
     { key:'date',      label:'Date',           type:'date' },
     { key:'time',      label:'Time',           type:'time' },
-    { key:'name',      label:'Mission name',   type:'text', placeholder:'e.g. Operation Longshore' },
-    { key:'type',      label:'Mission type',   type:'text', placeholder:'e.g. Patrol, Escort, Search and rescue' },
+    { key:'name',      label:'Mission name',   type:'text', placeholder:'e.g. Operation Longshore',
+      choices:function(){ return MISSION_OPERATIONS.map(function(o){ return o.name; }); },
+      groups:function(){
+        return OPERATION_TYPES.map(function(t){
+          return { label:t, options:MISSION_OPERATIONS
+            .filter(function(o){ return o.type === t; })
+            .map(function(o){ return o.name; }) };
+        });
+      } },
+    { key:'type',      label:'Mission type',   type:'text', placeholder:'e.g. Patrol, Escort, Search and rescue',
+      choices:function(){ return OPERATION_TYPES.slice(); } },
     { key:'navigator', label:'Navigator',      type:'text', placeholder:'Name of navigator' },
     { key:'rank',      label:'Rank',           type:'text', placeholder:'e.g. Lt' },
     { key:'ship',      label:'Ship',           type:'text', placeholder:'e.g. UCN Hydra' }
   ];
   var MISSION_KEYS = MISSION_FIELDS.map(function(f){ return f.key; });
+
+  function missionField(key){
+    for(var i = 0; i < MISSION_FIELDS.length; i++){
+      if(MISSION_FIELDS[i].key === key) return MISSION_FIELDS[i];
+    }
+    return null;
+  }
 
   function emptyMission(){
     var m = {};
@@ -1723,7 +1795,33 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
       var cls = (f.type === 'date' || f.type === 'time') ? '' : ' class="full"';
       var attrs = 'type="' + f.type + '" name="' + f.key + '" id="mission-' + f.key + '"' +
                   (f.placeholder ? ' placeholder="' + escapeHtml(f.placeholder) + '"' : '');
-      return '<label' + cls + '>' + escapeHtml(f.label) + ' <input ' + attrs + '></label>';
+      var input = '<label' + cls + '>' + escapeHtml(f.label) + ' <input ' + attrs + '></label>';
+
+      if(!f.choices) return input;
+
+      // Picker first, free text second and hidden until Other is chosen, so
+      // the common case is one tap and anything unlisted is still typeable.
+      var opts = '<option value="">Select ' + escapeHtml(f.label.toLowerCase()) + '\u2026</option>';
+      if(f.groups){
+        f.groups().forEach(function(g){
+          opts += '<optgroup label="' + escapeHtml(g.label) + '">' +
+            g.options.map(function(o){
+              return '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>';
+            }).join('') + '</optgroup>';
+        });
+      }else{
+        opts += f.choices().map(function(o){
+          return '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>';
+        }).join('');
+      }
+      opts += '<option value="' + OTHER + '">Other\u2026</option>';
+
+      return '<label class="full">' + escapeHtml(f.label) +
+               ' <select id="mission-' + f.key + '-select" ' +
+                 'aria-describedby="mission-' + f.key + '-hint">' + opts + '</select></label>' +
+             '<label class="full mission-other" id="mission-' + f.key + '-other" hidden>' +
+               escapeHtml(f.label) + ' (typed)' +
+               ' <input ' + attrs + '></label>';
     }).join('');
 
     panel.innerHTML =
@@ -1793,6 +1891,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   function startNewMission(){
     waypoints = [];
     mission = emptyMission();
+    otherChosen = Object.create(null);
     openIds = Object.create(null);
     editingId = null;
     confirmDeleteId = null;
@@ -1941,10 +2040,39 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
   function fillMissionForm(){
     MISSION_KEYS.forEach(function(k){
+      var field = missionField(k);
+      if(field && field.choices){ syncChoiceField(field); return; }
       var el = document.getElementById('mission-' + k);
       if(el && el.value !== mission[k]) el.value = mission[k];
     });
     renderMissionSummary();
+  }
+
+  // Choosing Other has to be remembered explicitly: inferring it from the value
+  // alone collapses the field again the moment it is chosen, before anything
+  // has been typed into it.
+  var otherChosen = Object.create(null);
+
+  // A value that is not on the list is not wrong - it just means Other, with
+  // the free text field showing what was typed.
+  function syncChoiceField(field){
+    var select = document.getElementById('mission-' + field.key + '-select');
+    var wrap = document.getElementById('mission-' + field.key + '-other');
+    var input = document.getElementById('mission-' + field.key);
+    if(!select || !wrap || !input) return;
+
+    var value = mission[field.key] || '';
+    var known = value && field.choices().indexOf(value) !== -1;
+
+    if(otherChosen[field.key] || (value && !known)){
+      select.value = OTHER;
+      wrap.hidden = false;
+      if(input.value !== value) input.value = value;
+    }else{
+      select.value = value;
+      wrap.hidden = true;
+      if(input.value !== '') input.value = '';
+    }
   }
 
   function renderMissionSummary(){
@@ -1980,6 +2108,43 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
       setFormNote('mission-setup', 'Saved.', false);
     });
 
+    form.addEventListener('change', function(e){
+      var select = e.target;
+      if(!select || select.tagName !== 'SELECT') return;
+      var key = (select.id || '').replace('mission-', '').replace('-select', '');
+      var field = missionField(key);
+      if(!field || !field.choices) return;
+
+      if(select.value === OTHER){
+        // Keep whatever was typed before rather than wiping it.
+        var input = document.getElementById('mission-' + key);
+        otherChosen[key] = true;
+        document.getElementById('mission-' + key + '-other').hidden = false;
+        mission[key] = input ? String(input.value).trim() : '';
+        if(input) input.focus();
+      }else{
+        otherChosen[key] = false;
+        mission[key] = select.value;
+        // The type follows from the operation, so fill it in rather than
+        // making it something else to remember.
+        if(key === 'name' && select.value){
+          var derived = typeForOperation(select.value);
+          if(derived) mission.type = derived;
+        }
+      }
+
+      saveWaypoints();
+      fillMissionForm();
+      if(select.value === OTHER){
+        var typed = document.getElementById('mission-' + key);
+        if(typed) typed.focus();
+      }
+      setFormNote('mission-setup',
+        (key === 'name' && select.value && select.value !== OTHER && typeForOperation(select.value))
+          ? 'Saved. Mission type set to ' + typeForOperation(select.value) + '.'
+          : 'Saved.', false);
+    });
+
     document.getElementById('missionNowBtn').addEventListener('click', function(){
       var d = new Date();
       mission.date = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
@@ -1991,6 +2156,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
     document.getElementById('missionClearBtn').addEventListener('click', function(){
       mission = emptyMission();
+      otherChosen = Object.create(null);
       saveWaypoints();
       fillMissionForm();
       setFormNote('mission-setup', 'Mission setup cleared.', true);

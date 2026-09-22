@@ -57,6 +57,9 @@ anything — useful when changing mobile layout.
 | `completion` | Completion dialog, per-category quick outcomes, cancel leaving the waypoint untouched, restore preserving the outcome, timing, history |
 | `iphone` | Layout targets on three viewports, 44px touch targets, 16px form controls, the add-form disclosure, sticky tab strip, iOS scroll lock, install metadata |
 | `mission-setup` | Mission fields, autosave, import adopting setup only when blank, escaping of imported text |
+| `operations` | The operations picker: every operation listed under its type, choosing one filling in the mission type, the Other… freetext path, unlisted values surviving a reload |
+| `new-mission` | New Mission clearing the log and setup, the unbacked-up warning, Export-first, cancel leaving everything alone |
+| `data-safety` | Backup state derived from `changedAt`/`lastExportAt`, the export dot, install prompt and persistent-storage request |
 | `quick-reference` | The section accordion, its scoping away from the completion dialog, compass surviving the restructure |
 | `ship-icons` | Ship grid contents, `currentColor` inheritance, viewBox refit, Arrow scaling |
 | `pdf-export` | Report generates, filename slug, fonts embed rather than falling back |
