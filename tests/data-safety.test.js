@@ -1,21 +1,11 @@
-const http = require('http');
 const fs = require('fs');
-const path = require('path');
-const { launch, appUrl, artifact, watch, seedWaypoints, readStore, report, isChromium, skip } = require('./lib/harness');
-
-const INDEX = path.resolve(__dirname, '..', 'index.html');
+const { launch, appUrl, serve, artifact, watch, seedWaypoints, readStore, report, isChromium, skip } = require('./lib/harness');
 
 // The manifest's start_url is only valid over a real origin, so this suite
-// serves the file rather than loading it from disk for that one check.
-function serve() {
-  return new Promise(resolve => {
-    const srv = http.createServer((req, res) => {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(fs.readFileSync(INDEX));
-    });
-    srv.listen(0, '127.0.0.1', () => resolve({ srv, url: 'http://127.0.0.1:' + srv.address().port + '/' }));
-  });
-}
+// serves the tool rather than loading it from disk for that one check. It uses
+// the harness server because that one serves each file with its own content
+// type — a server that answers everything as text/html makes the page's own
+// service worker registration fail, which reads as a product error.
 
 (async () => {
   const b = await launch();
@@ -144,10 +134,10 @@ function serve() {
     return;
   }
 
-  const { srv, url } = await serve();
+  const site = await serve();
   p = await b.newPage();
   watch(p, errors);
-  await p.goto(url);
+  await p.goto(site.url);
   const cdp = await p.context().newCDPSession(p);
   const man = await cdp.send('Page.getAppManifest').catch(e => ({ errors: [{ message: e.message, critical: 1 }] }));
   const critical = (man.errors || []).filter(e => e.critical);
@@ -160,7 +150,7 @@ function serve() {
   ok.push(['manifest ships an icon >=144px (Chrome install minimum)', !!big,
     JSON.stringify(parsed && (parsed.icons || []).map(i => i.sizes))]);
   await p.close();
-  srv.close();
+  await site.close();
 
   await b.close();
   report(ok, errors);

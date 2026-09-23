@@ -94,6 +94,20 @@ The log lives in this browser on this device, and nowhere else.
 
 **Install it to your home screen.** iOS clears saved website data after roughly a week without opening a site, which would empty the log with no warning. A site installed to the home screen is exempt. The tool offers this on first run — on iOS via Share → Add to Home Screen, on Android with an Install button — and the prompt goes away once you install or dismiss it. Where the browser supports it, the tool also asks for persistent storage; Safari does not honour that, which is why installing matters there.
 
+**It works with no signal.** *(Verified in the test suite on Chromium; the
+WebKit leg cannot check it — see `tests/README.md` — so confirm it on the phone
+once: install it, load it once, then reopen it in airplane mode.)* The tool
+caches itself on first load, so it opens
+and runs on venue wifi that has dropped, in a dead spot, or in airplane mode —
+adding waypoints, completing them and generating the PDF report all happen on
+the device. Without that, an app installed to the home screen and launched with
+no network shows a browser error, which is exactly when you need it. Fonts are
+the one part that comes from the network; offline they fall back to the system
+face until you have loaded the tool online once.
+
+When a new version has been deployed, the tool says so and waits — it never
+reloads itself mid-mission. Close and reopen it to pick the new version up.
+
 **Export is the backup.** The Mission Setup tab shows whether the log has ever been exported and whether it has changed since, and the Export button carries an amber dot whenever there are unsaved changes. Only the JSON export counts — a PDF is a report, not something you can restore from.
 
 ## Running the tests
@@ -107,11 +121,11 @@ npx playwright install chromium
 npm test
 ```
 
-Eleven suites, around 215 checks, covering behaviour, storage and migration,
+Twelve suites, around 225 checks, covering behaviour, storage and migration,
 the completion flow, mission setup, the operations picker, mission boundaries,
-the Quick Reference accordion, ship icons, PDF generation, colour contrast, and
-backup/install data safety. They run automatically on every pull
-request. See `tests/README.md`.
+the Quick Reference accordion, ship icons, PDF generation, colour contrast,
+backup/install data safety, and offline operation. They run automatically on
+every pull request. See `tests/README.md`.
 
 ## Keyboard & accessibility
 
@@ -122,6 +136,14 @@ request. See `tests/README.md`.
 
 ## Notes
 
+- `sw.js` is the one file besides `index.html` that is served. A service worker
+  cannot be inlined — it has to be a real file at the site root to claim the
+  right scope — so the tool is a single page plus a small worker rather than a
+  single file. It caches the page and serves it from cache first, then checks
+  for a new deploy in the background and compares ETags to decide whether to
+  mention it. To withdraw it, deploy an `sw.js` containing only
+  `self.addEventListener('install', function(){ self.registration.unregister(); });`
+  — every device picks that up on its next load and the caches go with it.
 - PDF reports are generated in the browser by jsPDF, vendored inline along with subset Exo 2 and Orbitron fonts, so export works offline with no build step and no CDN. This is what makes `index.html` large; if the fonts fail to register the report still exports, falling back to Helvetica.
 - The report cover carries the UCN roundel, inlined as a base64 PNG flattened onto white and colour-reduced, at roughly 356dpi for the 32mm it prints at. If the image cannot be decoded the cover falls back to a drawn vector mark rather than failing the export.
 - Waypoint data is stored locally in the browser (per device/browser), so it will persist between visits on the same device but won't sync across devices. If the browser blocks local storage, a banner warns you that the log won't survive closing the page.
