@@ -36,6 +36,7 @@ function controlled(page) {
   const supported = await p.evaluate(() => 'serviceWorker' in navigator);
   if (!supported) {
     ['registers a service worker', 'the worker takes control', 'shell is cached',
+     'the worker serves the cached shell with no network',
      'reload with no network still opens the tool', 'log survives an offline reload',
      'waypoints can be added offline', 'PDF report still generates offline',
      'a changed deploy announces itself', 'it does not reload the page itself']
@@ -68,14 +69,30 @@ function controlled(page) {
   ]);
 
   await ctx.setOffline(true);
+
+  // Asked before the reload, because the two can fail independently: this is
+  // the worker answering a request for the shell from its cache with no
+  // network, which is the thing this change actually adds. A reload asks the
+  // same of the engine's navigation path on top of it.
+  const served = await p.evaluate(async () => {
+    try {
+      const r = await fetch('./');
+      if (!r.ok) return 'status ' + r.status;
+      return (await r.text()).indexOf('UCN Navigation') !== -1 ? true : 'served something else';
+    } catch (e) { return 'threw: ' + e.message; }
+  });
+  ok.push(['the worker serves the cached shell with no network', served === true, served]);
+
   // Without the worker serving the shell this never loads at all, so it is
   // caught: a broken offline path must read as a failed check, not a crashed
   // suite that takes the rest of the run's results with it.
-  let reloaded = true;
-  await p.reload({ timeout: 15000 }).catch(() => { reloaded = false; });
+  let reloadError = '';
+  await p.reload({ timeout: 15000 }).catch(e => { reloadError = e.message.split('\n')[0]; });
+  const reloaded = !reloadError;
 
   ok.push(['reload with no network still opens the tool',
-    reloaded && (await p.locator('.tab-btn').count()) === 9, 'navigation failed offline']);
+    reloaded && (await p.locator('.tab-btn').count()) === 9,
+    'navigation failed offline: ' + (reloadError || 'page loaded but did not build')]);
 
   if (reloaded) {
     ok.push(['log survives an offline reload', (await p.locator('#list-all .wp-item[data-id]').count()) === 2]);
