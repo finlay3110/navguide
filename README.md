@@ -43,7 +43,7 @@ The first tab records the sortie: date, time, mission name, mission type, naviga
 **Mission name** and **Rank** are searchable: type to narrow the list, or tap the caret to see all of it. Neither is a closed set — whatever you type is saved as you type it, so an operation or rank that isn't listed needs nothing special.
 
 - **Mission name** holds the 32 known operations, grouped by type — Military, Exploration, Diplomacy and Intrigue. Choosing one fills in the mission type for you, since the operation determines it: pick OPERATION TEDDER and the type becomes Military.
-- **Rank** holds the rank ladder, and matches the short form you'd actually type: "lt cdr" finds Lieutenant Commander, "adm" finds all four admirals. The full name is what gets stored and printed; the short form shows beside it in the list.
+- **Rank** holds the UCN ladder, from Cadet to Admiral of the Fleet. Searching works whichever way you write it: "lt cmdr" and "lieutenant commander" both find **Lt Cmdr**, "lt" brings up all three lieutenant ranks, "adm" all four admirals. The other form of each rank shows beside it in the list, and the rank is stored and printed exactly as it appears on the ladder — search for "lieutenant commander" and the log still says Lt Cmdr.
 
 Arrow keys move through the list, Enter takes the highlighted entry, Escape closes it and keeps what you typed. When nothing matches, the list says so rather than going blank — what you typed is already saved.
 
@@ -159,10 +159,17 @@ automatically on every pull request. See `tests/README.md`.
 
 ### Changing the rank list
 
-The rank ladder in `RANKS` (`index.html`) is a **starting list, not canon** —
-each entry is a full name and the short form it is searched by. Edit the array
-and the picker follows; `tests/ranks.test.js` carries the same list so that an
-edit to one of them without the other is caught rather than quietly diverging.
+The ladder lives in `RANKS` (`index.html`). Each entry is the rank as it should
+be written — that string is what gets stored and printed — plus `alt`, the
+other way of writing it.
+
+`alt` runs in whichever direction the name does not: `Lieutenant` carries `Lt`,
+and `Lt Cmdr` carries `Lieutenant Commander`. That is the point of it. Without
+it the ranks written short would only ever be found by someone typing them
+short, which is the half of the problem a search box is meant to remove.
+
+Edit the array and the picker follows. `tests/ranks.test.js` carries the same
+list, so editing one without the other is caught rather than quietly diverging.
 Nothing depends on a rank being in the list: an unlisted rank is typed in and
 stored exactly as typed.
 

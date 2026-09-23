@@ -77,7 +77,7 @@ anything — useful when changing mobile layout.
 | `iphone` | Layout targets on three viewports, 44px touch targets, 16px form controls, the add-form disclosure, sticky tab strip, iOS scroll lock, install metadata |
 | `mission-setup` | Mission fields, autosave, import adopting setup only when blank, escaping of imported text |
 | `operations` | The mission name combobox: every operation listed under its type, searching and filtering, keyboard navigation, choosing one filling in the mission type, freetext, unlisted values surviving a reload |
-| `ranks` | The rank combobox: the ladder and its order, short-form matching ("lt cdr"), the full name being what is stored, freetext, and two pickers on one form staying independent |
+| `ranks` | The rank combobox: the ladder and its order, matching in both directions ("lt cmdr" and "lieutenant commander" both find Lt Cmdr), the rank storing as written rather than as searched, freetext, and two pickers on one form staying independent |
 | `new-mission` | New Mission clearing the log and setup, the unbacked-up warning, Export-first, cancel leaving everything alone |
 | `data-safety` | Backup state derived from `changedAt`/`lastExportAt`, the export dot, install prompt and persistent-storage request |
 | `offline` | Service worker registration and control, the cached shell, reloading and logging with the network off, the PDF still generating, and a new deploy announcing itself without reloading the page |
