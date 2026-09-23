@@ -2,9 +2,9 @@ const { launch, appUrl, watch, readStore, report } = require('./lib/harness');
 
 // The ladder the app ships. If the list is edited, this is the other place to
 // change — deliberately, so a silent edit to one of them shows up.
-const RANKS = ['Recruit', 'Crewman', 'Petty Officer', 'Chief Petty Officer', 'Ensign',
-  'Sub Lieutenant', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain',
-  'Commodore', 'Rear Admiral', 'Vice Admiral', 'Admiral', 'Fleet Admiral'];
+const RANKS = ['Cadet', 'Ensign', 'Sub Lt', 'Lieutenant', 'Lt Cmdr', 'Commander',
+  'Captain', 'Commodore', 'Rear Admiral', 'Vice Admiral', 'Admiral',
+  'Admiral of the Fleet'];
 
 const rows = p => p.locator('#mission-rank-list .combo-opt');
 
@@ -32,23 +32,37 @@ async function type(p, text) {
   ok.push(['...in the ladder order', listed.join('|') === RANKS.join('|'), listed.join('|')]);
   ok.push(['rank has no group headings', (await p.locator('#mission-rank-list .combo-group').count()) === 0]);
 
-  // ---- the short form is what people type ---------------------------------
-  await type(p, 'lt cdr');
-  ok.push(['a short form finds the rank', (await rows(p).count()) === 1, await rows(p).allTextContents()]);
-  ok.push(['...the right one',
-    (await rows(p).first().getAttribute('data-value')) === 'Lieutenant Commander']);
+  // ---- searching works in both directions ---------------------------------
+  // Several ranks are stored abbreviated, so matching has to run the other way
+  // too or "lieutenant commander" would never find Lt Cmdr.
+  await type(p, 'lt cmdr');
+  ok.push(['the stored short form matches', (await rows(p).count()) === 1, await rows(p).allTextContents()]);
+  ok.push(['...the right one', (await rows(p).first().getAttribute('data-value')) === 'Lt Cmdr']);
+
+  await type(p, 'lieutenant commander');
+  ok.push(['spelling it out finds the abbreviated rank',
+    (await rows(p).count()) === 1 &&
+    (await rows(p).first().getAttribute('data-value')) === 'Lt Cmdr',
+    await rows(p).allTextContents()]);
+
+  await type(p, 'sub lieutenant');
+  ok.push(['and Sub Lt the same way',
+    (await rows(p).count()) === 1 &&
+    (await rows(p).first().getAttribute('data-value')) === 'Sub Lt',
+    await rows(p).allTextContents()]);
 
   await type(p, 'lt');
   const lt = await rows(p).evaluateAll(rs => rs.map(r => r.getAttribute('data-value')));
-  ok.push(['a short prefix finds both Lieutenant ranks',
-    lt.includes('Lieutenant') && lt.includes('Lieutenant Commander'), JSON.stringify(lt)]);
+  ok.push(['"lt" finds all three lieutenant ranks',
+    lt.length === 3 && lt.includes('Lieutenant') && lt.includes('Lt Cmdr') && lt.includes('Sub Lt'),
+    JSON.stringify(lt)]);
 
   await type(p, 'adm');
   const adm = await rows(p).evaluateAll(rs => rs.map(r => r.getAttribute('data-value')));
-  ok.push(['and the admirals', adm.length === 4, JSON.stringify(adm)]);
+  ok.push(['"adm" finds all four admirals', adm.length === 4, JSON.stringify(adm)]);
 
-  ok.push(['the short form is shown beside the rank', await p.evaluate(() => {
-    const r = document.querySelector('#mission-rank-list .combo-opt .combo-short');
+  ok.push(['the other form is shown beside the rank', await p.evaluate(() => {
+    const r = document.querySelector('#mission-rank-list .combo-opt .combo-alt');
     return !!r && r.textContent.trim().length > 0;
   })]);
 
@@ -57,8 +71,17 @@ async function type(p, text) {
   await rows(p).first().click();
   await p.waitForTimeout(60);
   let s = await readStore(p);
-  ok.push(['choosing stores the full rank', s.mission.rank === 'Captain', s.mission.rank]);
+  ok.push(['choosing stores the rank as written', s.mission.rank === 'Captain', s.mission.rank]);
   ok.push(['the field shows it', (await p.locator('#mission-rank').inputValue()) === 'Captain']);
+
+  // Found by the spelled-out form, stored abbreviated: what is written on the
+  // ladder is what goes in the log and on the report, not what was typed.
+  await type(p, 'lieutenant commander');
+  await rows(p).first().click();
+  await p.waitForTimeout(60);
+  s = await readStore(p);
+  ok.push(['an abbreviated rank stores abbreviated, not as searched',
+    s.mission.rank === 'Lt Cmdr', s.mission.rank]);
   ok.push(['choosing a rank does not touch the mission type',
     !s.mission.type, JSON.stringify(s.mission.type)]);
 

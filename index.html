@@ -550,7 +550,7 @@
     cursor:pointer;
   }
   .combo-opt.active, .combo-opt:hover{ background:rgba(79,168,201,0.18); }
-  .combo-short{ color:var(--muted); font-size:0.82rem; white-space:nowrap; }
+  .combo-alt{ color:var(--muted); font-size:0.82rem; white-space:nowrap; }
   .combo-empty{ padding:12px 10px; color:var(--muted); font-size:0.88rem; }
 
   .mission-summary-title{
@@ -1521,31 +1521,31 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   // option that reveals a free text field.
   var OTHER = '__other__';
 
-  // A starting ladder rather than anything authoritative — replace the list and
-  // the pickers follow. The short form is what people actually type ("lt cdr"),
-  // so it is matched on and shown beside the rank, while the full name is what
-  // gets stored and printed.
+  // The UCN ladder. `name` is exactly what gets stored and printed, so the
+  // abbreviated ones stay abbreviated.
+  //
+  // `alt` is the other way of writing it, and it is searched on as well as
+  // shown. It runs in whichever direction the name does not: Lieutenant is
+  // found by "lt", and Lt Cmdr by "lieutenant commander". Without that, the
+  // ranks written short would only ever match someone typing them short.
   var RANKS = [
-    { name:'Recruit',              short:'Rct' },
-    { name:'Crewman',              short:'Crw' },
-    { name:'Petty Officer',        short:'PO' },
-    { name:'Chief Petty Officer',  short:'CPO' },
-    { name:'Ensign',               short:'Ens' },
-    { name:'Sub Lieutenant',       short:'Sub Lt' },
-    { name:'Lieutenant',           short:'Lt' },
-    { name:'Lieutenant Commander', short:'Lt Cdr' },
-    { name:'Commander',            short:'Cdr' },
-    { name:'Captain',              short:'Capt' },
-    { name:'Commodore',            short:'Cdre' },
-    { name:'Rear Admiral',         short:'RAdm' },
-    { name:'Vice Admiral',         short:'VAdm' },
-    { name:'Admiral',              short:'Adm' },
-    { name:'Fleet Admiral',        short:'FAdm' }
+    { name:'Cadet',                alt:'Cdt' },
+    { name:'Ensign',               alt:'Ens' },
+    { name:'Sub Lt',               alt:'Sub Lieutenant' },
+    { name:'Lieutenant',           alt:'Lt' },
+    { name:'Lt Cmdr',              alt:'Lieutenant Commander' },
+    { name:'Commander',            alt:'Cmdr' },
+    { name:'Captain',              alt:'Capt' },
+    { name:'Commodore',            alt:'Cdre' },
+    { name:'Rear Admiral',         alt:'RAdm' },
+    { name:'Vice Admiral',         alt:'VAdm' },
+    { name:'Admiral',              alt:'Adm' },
+    { name:'Admiral of the Fleet', alt:'AF' }
   ];
 
-  function shortForRank(name){
+  function altForRank(name){
     for(var i = 0; i < RANKS.length; i++){
-      if(RANKS[i].name === name) return RANKS[i].short;
+      if(RANKS[i].name === name) return RANKS[i].alt;
     }
     return '';
   }
@@ -1569,7 +1569,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
     { key:'rank',      label:'Rank',           type:'text', placeholder:'Search or pick a rank',
       search:true,
       choices:function(){ return RANKS.map(function(r){ return r.name; }); },
-      alt:shortForRank },
+      alt:altForRank },
     { key:'ship',      label:'Ship',           type:'text', placeholder:'e.g. UCN Hydra' }
   ];
   var MISSION_KEYS = MISSION_FIELDS.map(function(f){ return f.key; });
@@ -2220,8 +2220,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
     var hit = function(value){
       if(!q) return true;
       if(value.toLowerCase().indexOf(q) !== -1) return true;
-      var short = field.alt ? field.alt(value) : '';
-      return !!short && short.toLowerCase().indexOf(q) !== -1;
+      var other = field.alt ? field.alt(value) : '';
+      return !!other && other.toLowerCase().indexOf(q) !== -1;
     };
 
     if(field.groups){
@@ -2246,12 +2246,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
       }
       g.options.forEach(function(o){
         var i = values.length;
-        var short = field.alt ? field.alt(o) : '';
+        var other = field.alt ? field.alt(o) : '';
         values.push(o);
         html += '<li class="combo-opt" role="option" id="mission-' + field.key + '-opt-' + i + '" ' +
                   'data-value="' + escapeHtml(o) + '" aria-selected="false">' +
                   escapeHtml(o) +
-                  (short ? '<span class="combo-short">' + escapeHtml(short) + '</span>' : '') +
+                  (other ? '<span class="combo-alt">' + escapeHtml(other) + '</span>' : '') +
                 '</li>';
       });
     });
