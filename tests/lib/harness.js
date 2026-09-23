@@ -6,6 +6,8 @@
 
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const crypto = require('crypto');
 const { pathToFileURL } = require('url');
 const playwright = require('playwright');
 
@@ -49,6 +51,51 @@ function skip(ok, name, why) {
 
 function appUrl() {
   return pathToFileURL(path.join(ROOT, 'index.html')).href;
+}
+
+// A service worker cannot register from file://, so the offline suite needs a
+// real origin. This serves the repo over localhost with genuine ETags, because
+// the shell-update notice compares them, and lets a test replace a file's body
+// to stand in for a deploy.
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8' };
+
+function serve() {
+  const overrides = new Map();
+
+  const server = http.createServer((req, res) => {
+    let name = decodeURIComponent(req.url.split('?')[0]);
+    if (name === '/') name = '/index.html';
+
+    const file = path.join(ROOT, name);
+    if (!file.startsWith(ROOT + path.sep)) { res.writeHead(403).end(); return; }
+
+    let body;
+    if (overrides.has(name)) body = overrides.get(name);
+    else if (fs.existsSync(file)) body = fs.readFileSync(file);
+    else { res.writeHead(404).end(); return; }
+
+    res.writeHead(200, {
+      'Content-Type': TYPES[path.extname(name)] || 'application/octet-stream',
+      'Content-Length': body.length,
+      // A real validator, and no HTTP caching, so what the test observes is the
+      // service worker's own behaviour rather than the browser's memory cache.
+      'ETag': '"' + crypto.createHash('md5').update(body).digest('hex') + '"',
+      'Cache-Control': 'no-cache',
+    });
+    res.end(req.method === 'HEAD' ? undefined : body);
+  });
+
+  return new Promise(resolve => {
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address();
+      resolve({
+        url: 'http://127.0.0.1:' + port + '/',
+        // Stands in for a deploy: same path, different body, different ETag.
+        override: (name, text) => overrides.set(name, Buffer.from(text)),
+        close: () => new Promise(done => server.close(done)),
+      });
+    });
+  });
 }
 
 function artifact(name) {
@@ -118,6 +165,6 @@ function report(ok, errors) {
 }
 
 module.exports = {
-  launch, engine, isChromium, skip, launchOpts, appUrl, artifact,
+  launch, engine, isChromium, skip, launchOpts, appUrl, serve, artifact,
   watch, openApp, ensureOpen, seedWaypoints, readStore, report,
 };

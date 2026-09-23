@@ -41,6 +41,11 @@ A few checks depend on Chromium-only APIs — CDP `Page.getAppManifest` and
 than dropped, so a run never silently loses coverage. The iOS install wording
 is asserted on every engine.
 
+The `offline` suite guards on the **feature**, not the engine: it registers a
+service worker wherever `navigator.serviceWorker` exists and only skips on a
+build without it, so a headless engine that does support them is really tested
+rather than assumed incapable.
+
 If your environment ships a Chromium that Playwright did not install itself,
 point at it: `UCN_CHROMIUM=/path/to/chrome npm test`. Some sandboxes block
 `cdn.playwright.dev`, so only a pre-installed engine can run there.
@@ -60,6 +65,7 @@ anything — useful when changing mobile layout.
 | `operations` | The operations picker: every operation listed under its type, choosing one filling in the mission type, the Other… freetext path, unlisted values surviving a reload |
 | `new-mission` | New Mission clearing the log and setup, the unbacked-up warning, Export-first, cancel leaving everything alone |
 | `data-safety` | Backup state derived from `changedAt`/`lastExportAt`, the export dot, install prompt and persistent-storage request |
+| `offline` | Service worker registration and control, the cached shell, reloading and logging with the network off, the PDF still generating, and a new deploy announcing itself without reloading the page |
 | `quick-reference` | The section accordion, its scoping away from the completion dialog, compass surviving the restructure |
 | `ship-icons` | Ship grid contents, `currentColor` inheritance, viewBox refit, Arrow scaling |
 | `pdf-export` | Report generates, filename slug, fonts embed rather than falling back |
@@ -79,6 +85,11 @@ Two things have caught me out and are worth remembering:
 - **Prefer `page.evaluate(() => el.click())` when the assertion depends on
   scroll position.** Playwright's `locator.click()` scrolls the target into
   view first, which quietly destroys what you were trying to measure.
+
+- **Serve the tool with real content types when a check touches the page's own
+  network behaviour.** `harness.serve()` does; a one-line server that answers
+  everything as `text/html` makes the page's service worker registration fail
+  on MIME type, which shows up as a console error in an unrelated suite.
 
 Also note that expanded state is shared across tabs by design, so use
 `ensureOpen()` rather than clicking a row and assuming it opened.

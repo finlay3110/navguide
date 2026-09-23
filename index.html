@@ -2024,6 +2024,30 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
     if(deferredInstall) btn.hidden = false;
   }
 
+  /* ---------- offline shell ---------- */
+
+  // Installing to the home screen keeps the log; the service worker keeps the
+  // page, so the tool still opens with no signal. Registration is best-effort:
+  // a failure here must never stop the tool loading, and there is nothing to
+  // register from a file:// copy or an insecure origin.
+  function initServiceWorker(){
+    if(!('serviceWorker' in navigator)) return;
+    var host = location.hostname;
+    if(location.protocol !== 'https:' && host !== 'localhost' && host !== '127.0.0.1') return;
+
+    navigator.serviceWorker.addEventListener('message', function(e){
+      if(e.data && e.data.type === 'ucn-shell-updated'){
+        // Never reload out from under a mission in progress.
+        setNotice('A newer version of the tool is ready — close and reopen it to load it. Your log is not affected.', false);
+      }
+    });
+
+    try{
+      var p = navigator.serviceWorker.register('sw.js');
+      if(p && p.catch) p.catch(function(){});
+    }catch(e){ /* nothing to do; the tool works online regardless */ }
+  }
+
   // Chrome and Android honour this and stop evicting the origin's storage.
   // Safari does not implement it, which is exactly why the install nudge above
   // carries the weight on iOS. Must never break startup.
@@ -3514,6 +3538,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   initMissionForm();
   initNewMission();
   initInstallNudge();
+  initServiceWorker();
   requestPersistentStorage();
   render();
   renderBackupState();
