@@ -1,5 +1,51 @@
 const { launch, appUrl, serve, watch, skip, seedWaypoints, report } = require('./lib/harness');
 
+// Can this browser, under this harness's offline emulation, be served by a
+// service worker at all while offline? Measured rather than assumed, with a
+// worker that answers from neither cache nor network — it returns a literal
+// response, so nothing but the engine's offline handling can fail it.
+//
+// WebKit fails this, which is https://github.com/microsoft/playwright/issues/42775
+// (open, targeted at Playwright 1.64): its offline emulation rejects
+// service-worker-fulfilled requests. Anything this suite asserts about being
+// offline is therefore unobservable there, and is reported as skipped rather
+// than as a fault in the tool. It runs on its own origin so it cannot disturb
+// the registration the real checks use.
+const LITERAL_SW = `
+self.addEventListener('install', function(){ self.skipWaiting(); });
+self.addEventListener('activate', function(e){ e.waitUntil(self.clients.claim()); });
+self.addEventListener('fetch', function(e){
+  if(e.request.url.indexOf('/ping') !== -1){
+    e.respondWith(new Response('pong', { headers: { 'Content-Type': 'text/plain' } }));
+  }
+});`;
+
+const LITERAL_PAGE = `<!DOCTYPE html><title>probe</title>
+<script>navigator.serviceWorker.register('sw.js');<\/script>`;
+
+async function canServeOffline(browser) {
+  const site = await serve();
+  site.override('/sw.js', LITERAL_SW);
+  site.override('/index.html', LITERAL_PAGE);
+
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();   // deliberately unwatched: its failures are the measurement
+  let answered = false;
+  try {
+    await page.goto(site.url);
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
+    await ctx.setOffline(true);
+    answered = await page.evaluate(async () => {
+      try { return (await (await fetch('./ping')).text()) === 'pong'; }
+      catch (e) { return false; }
+    });
+  } catch (e) { answered = false; }
+
+  await ctx.close();
+  await site.close();
+  return answered;
+}
+
 // Waits for the service worker to be in charge of the page. Registration alone
 // is not enough: until a worker controls the client, a reload still goes to the
 // network and an offline reload would fail for reasons that are not a bug.
@@ -61,6 +107,23 @@ function controlled(page) {
     const c = await caches.open(names[0]);
     return !!(await c.match('./'));
   })]);
+
+  // Registration, control and caching are real coverage on every engine and
+  // have just been asserted. What follows needs the browser to accept a
+  // service worker's answer while offline, which not every harness allows.
+  if (!(await canServeOffline(b))) {
+    ['the worker serves the cached shell with no network',
+     'reload with no network still opens the tool', 'log survives an offline reload',
+     'waypoints can be added offline', 'PDF report still generates offline',
+     'a changed deploy announces itself', 'it does not reload the page itself']
+      .forEach(name => skip(ok, name,
+        'this build rejects service-worker responses while offline, even a literal one'));
+    await ctx.close();
+    await site.close();
+    await b.close();
+    report(ok, errors);
+    return;
+  }
 
   // A mission's worth of work, then the network goes away mid-sortie.
   await seedWaypoints(p, [

@@ -46,6 +46,20 @@ service worker wherever `navigator.serviceWorker` exists and only skips on a
 build without it, so a headless engine that does support them is really tested
 rather than assumed incapable.
 
+WebKit runs service workers and passes the registration, control and caching
+checks. It cannot run the checks that need the network **off**: Playwright's
+WebKit offline emulation rejects any request a service worker fulfils, and
+[playwright#42775](https://github.com/microsoft/playwright/issues/42775) (open,
+targeted at 1.64) reports the same for a worker returning a literal response
+with no cache and no network. The suite measures that rather than taking it on
+trust — it registers a throwaway worker on its own origin that answers `/ping`
+with a literal response and checks whether the browser accepts it while
+offline — and skips the offline assertions only when the answer is no.
+
+**So the offline path is verified on Chromium in CI and on the device, not by
+the WebKit leg.** If that Playwright bug is fixed, the probe starts succeeding
+and those checks run on WebKit with no change here.
+
 If your environment ships a Chromium that Playwright did not install itself,
 point at it: `UCN_CHROMIUM=/path/to/chrome npm test`. Some sandboxes block
 `cdn.playwright.dev`, so only a pre-installed engine can run there.

@@ -94,7 +94,10 @@ The log lives in this browser on this device, and nowhere else.
 
 **Install it to your home screen.** iOS clears saved website data after roughly a week without opening a site, which would empty the log with no warning. A site installed to the home screen is exempt. The tool offers this on first run — on iOS via Share → Add to Home Screen, on Android with an Install button — and the prompt goes away once you install or dismiss it. Where the browser supports it, the tool also asks for persistent storage; Safari does not honour that, which is why installing matters there.
 
-**It works with no signal.** The tool caches itself on first load, so it opens
+**It works with no signal.** *(Verified in the test suite on Chromium; the
+WebKit leg cannot check it — see `tests/README.md` — so confirm it on the phone
+once: install it, load it once, then reopen it in airplane mode.)* The tool
+caches itself on first load, so it opens
 and runs on venue wifi that has dropped, in a dead spot, or in airplane mode —
 adding waypoints, completing them and generating the PDF report all happen on
 the device. Without that, an app installed to the home screen and launched with
