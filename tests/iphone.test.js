@@ -56,6 +56,33 @@ const seed=`(function(){const add=(c,n,t)=>{const f=document.querySelector('form
   });
   ok.push(['every form control >=16px (no iOS zoom)', fonts.every(f=>f.px>=16), JSON.stringify(fonts.filter(f=>f.px<16))]);
 
+  // --- the searchable pickers are thumb-sized ----------------------------
+  // The field itself is shorter than 44px, so the caret is centred on it and
+  // allowed to overhang; measured because it was 44x36 when first written.
+  await p.locator('#tab-mission-setup').click();
+  const picker=await p.evaluate(()=>{
+    const out=[];
+    document.querySelectorAll('.combo-btn').forEach(b=>{
+      const r=b.getBoundingClientRect();
+      out.push({id:b.id, w:Math.round(r.width), h:Math.round(r.height)});
+    });
+    return out;
+  });
+  ok.push(['picker carets are 44pt targets', picker.length===2 && picker.every(b=>b.w>=44&&b.h>=44),
+    JSON.stringify(picker)]);
+
+  // An open list must sit on screen, not half off the bottom of it.
+  await p.locator('#mission-rank-toggle').click();
+  const listFits=await p.evaluate(()=>{
+    const r=document.getElementById('mission-rank-list').getBoundingClientRect();
+    const seen=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+    return {top:Math.round(r.top), bottom:Math.round(r.bottom), seen:Math.round(seen)};
+  });
+  ok.push(['an open picker list stays on screen',
+    listFits.top>=0 && listFits.bottom<=listFits.seen, JSON.stringify(listFits)]);
+  await p.keyboard.press('Escape');
+  await p.locator('#tab-nav').click();
+
   // --- disclosure --------------------------------------------------------
   ok.push(['toggle expands the form', await p.locator('#form-nav').isVisible()]);
   ok.push(['aria-expanded tracks state', (await p.locator('#panel-nav .add-toggle').getAttribute('aria-expanded'))==='true']);

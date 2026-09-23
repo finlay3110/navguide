@@ -40,9 +40,14 @@ Waypoints record when they were logged and when they were completed, shown as st
 
 The first tab records the sortie: date, time, mission name, mission type, navigator, rank and ship. It saves as you type — there is no Save button to forget — and **Set date & time to now** fills both from the clock. **Clear setup** empties every field.
 
-**Mission name** is a picker of the 32 known operations, grouped by type — Military, Exploration, Diplomacy and Intrigue. Choosing one fills in the mission type for you, since the operation determines it: pick OPERATION TEDDER and the type becomes Military. **Mission type** is a picker too, for the sorties that aren't on the list.
+**Mission name** and **Rank** are searchable: type to narrow the list, or tap the caret to see all of it. Neither is a closed set — whatever you type is saved as you type it, so an operation or rank that isn't listed needs nothing special.
 
-Both pickers end with **Other…**, which reveals a text box for anything not listed — a new operation, a training run, or a type the list doesn't cover. Choosing an operation after typing something replaces the typed value, and a log imported with an operation the tool doesn't know reopens in the text box with the name intact rather than being silently dropped.
+- **Mission name** holds the 32 known operations, grouped by type — Military, Exploration, Diplomacy and Intrigue. Choosing one fills in the mission type for you, since the operation determines it: pick OPERATION TEDDER and the type becomes Military.
+- **Rank** holds the rank ladder, and matches the short form you'd actually type: "lt cdr" finds Lieutenant Commander, "adm" finds all four admirals. The full name is what gets stored and printed; the short form shows beside it in the list.
+
+Arrow keys move through the list, Enter takes the highlighted entry, Escape closes it and keeps what you typed. When nothing matches, the list says so rather than going blank — what you typed is already saved.
+
+**Mission type** stays a plain picker of the four types, with **Other…** for anything else, since it's a four-item list that search wouldn't help with and it's usually filled in for you anyway.
 
 Mission setup is stored alongside the waypoints and included in every export.
 
@@ -121,11 +126,11 @@ npx playwright install chromium
 npm test
 ```
 
-Twelve suites, around 225 checks, covering behaviour, storage and migration,
-the completion flow, mission setup, the operations picker, mission boundaries,
-the Quick Reference accordion, ship icons, PDF generation, colour contrast,
-backup/install data safety, and offline operation. They run automatically on
-every pull request. See `tests/README.md`.
+Thirteen suites, around 250 checks, covering behaviour, storage and migration,
+the completion flow, mission setup, the operations and rank pickers, mission
+boundaries, the Quick Reference accordion, ship icons, PDF generation, colour
+contrast, backup/install data safety, and offline operation. They run
+automatically on every pull request. See `tests/README.md`.
 
 ## Keyboard & accessibility
 
@@ -151,6 +156,15 @@ every pull request. See `tests/README.md`.
 - Matches the standard UCN dark navy visual theme used across the rest of the tool suite.
 - The UCN roundel appears in the app header, as the browser tab icon, and on the PDF cover, all inlined as base64 PNGs. The supplied artwork is a knockout — its ring and manta are transparent holes rather than white pixels — so the header and favicon copies have those holes filled with white and only the area outside the disc left transparent. Without that the mark disappears against the navy header. The disc's own navy matches the header almost exactly, so a CSS hairline ring gives it an edge rather than recolouring the artwork.
 - Ship icons are inlined into `index.html` as SVG rather than loaded as separate files, so the tool remains a single self-contained page with no build step. They are drawn with `currentColor`, so they follow the theme's text colour instead of carrying their own.
+
+### Changing the rank list
+
+The rank ladder in `RANKS` (`index.html`) is a **starting list, not canon** —
+each entry is a full name and the short form it is searched by. Edit the array
+and the picker follows; `tests/ranks.test.js` carries the same list so that an
+edit to one of them without the other is caught rather than quietly diverging.
+Nothing depends on a rank being in the list: an unlisted rank is typed in and
+stored exactly as typed.
 
 ### Adding or replacing a ship icon
 

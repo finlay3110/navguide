@@ -489,6 +489,70 @@
   .mission-other[hidden]{ display:none; }
   .mission-form select{ width:100%; }
 
+  /* Searchable picker: a text field that is also a list. */
+  .combo-field{ display:flex; flex-direction:column; gap:4px; }
+  .combo{ position:relative; }
+  .combo input{ width:100%; padding-right:44px; }
+  .combo-btn{
+    position:absolute;
+    /* A real 44pt target. The field itself is shorter, so the button is
+       centred on it and allowed to overhang; it is transparent either side. */
+    top:50%;
+    transform:translateY(-50%);
+    right:0;
+    height:44px;
+    width:44px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:none;
+    border:0;
+    color:var(--muted);
+    cursor:pointer;
+  }
+  .combo-btn:hover{ color:var(--text); }
+  .combo-btn svg{ width:20px; height:20px; }
+  .combo-list{
+    position:absolute;
+    top:calc(100% + 4px);
+    left:0; right:0;
+    z-index:15;                      /* under the sticky tab strip, over the form */
+    margin:0;
+    padding:4px;
+    list-style:none;
+    max-height:min(46vh, 320px);
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    background:var(--input);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:10px;
+    box-shadow:0 14px 34px rgba(0,0,0,0.5);
+  }
+  .combo-list[hidden]{ display:none; }
+  /* Opens upward when the field is near the bottom of the screen, so the list
+     is not half off it — which is where Rank and Ship sit on a phone. */
+  .combo-list.up{ top:auto; bottom:calc(100% + 4px); }
+  .combo-group{
+    padding:8px 10px 4px;
+    font-size:0.68rem;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--cyan);
+  }
+  .combo-opt{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    min-height:44px;
+    padding:8px 10px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .combo-opt.active, .combo-opt:hover{ background:rgba(79,168,201,0.18); }
+  .combo-short{ color:var(--muted); font-size:0.82rem; white-space:nowrap; }
+  .combo-empty{ padding:12px 10px; color:var(--muted); font-size:0.88rem; }
+
   .mission-summary-title{
     font-size:0.72rem;
     letter-spacing:0.06em;
@@ -1457,10 +1521,40 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   // option that reveals a free text field.
   var OTHER = '__other__';
 
+  // A starting ladder rather than anything authoritative — replace the list and
+  // the pickers follow. The short form is what people actually type ("lt cdr"),
+  // so it is matched on and shown beside the rank, while the full name is what
+  // gets stored and printed.
+  var RANKS = [
+    { name:'Recruit',              short:'Rct' },
+    { name:'Crewman',              short:'Crw' },
+    { name:'Petty Officer',        short:'PO' },
+    { name:'Chief Petty Officer',  short:'CPO' },
+    { name:'Ensign',               short:'Ens' },
+    { name:'Sub Lieutenant',       short:'Sub Lt' },
+    { name:'Lieutenant',           short:'Lt' },
+    { name:'Lieutenant Commander', short:'Lt Cdr' },
+    { name:'Commander',            short:'Cdr' },
+    { name:'Captain',              short:'Capt' },
+    { name:'Commodore',            short:'Cdre' },
+    { name:'Rear Admiral',         short:'RAdm' },
+    { name:'Vice Admiral',         short:'VAdm' },
+    { name:'Admiral',              short:'Adm' },
+    { name:'Fleet Admiral',        short:'FAdm' }
+  ];
+
+  function shortForRank(name){
+    for(var i = 0; i < RANKS.length; i++){
+      if(RANKS[i].name === name) return RANKS[i].short;
+    }
+    return '';
+  }
+
   var MISSION_FIELDS = [
     { key:'date',      label:'Date',           type:'date' },
     { key:'time',      label:'Time',           type:'time' },
-    { key:'name',      label:'Mission name',   type:'text', placeholder:'e.g. Operation Longshore',
+    { key:'name',      label:'Mission name',   type:'text', placeholder:'Search or pick an operation',
+      search:true,
       choices:function(){ return MISSION_OPERATIONS.map(function(o){ return o.name; }); },
       groups:function(){
         return OPERATION_TYPES.map(function(t){
@@ -1472,7 +1566,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
     { key:'type',      label:'Mission type',   type:'text', placeholder:'e.g. Patrol, Escort, Search and rescue',
       choices:function(){ return OPERATION_TYPES.slice(); } },
     { key:'navigator', label:'Navigator',      type:'text', placeholder:'Name of navigator' },
-    { key:'rank',      label:'Rank',           type:'text', placeholder:'e.g. Lt' },
+    { key:'rank',      label:'Rank',           type:'text', placeholder:'Search or pick a rank',
+      search:true,
+      choices:function(){ return RANKS.map(function(r){ return r.name; }); },
+      alt:shortForRank },
     { key:'ship',      label:'Ship',           type:'text', placeholder:'e.g. UCN Hydra' }
   ];
   var MISSION_KEYS = MISSION_FIELDS.map(function(f){ return f.key; });
@@ -1799,6 +1896,28 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
       if(!f.choices) return input;
 
+      // A searchable field is one control, not two: type to narrow the list,
+      // or tap the caret for all of it. Anything unlisted is simply what you
+      // typed, so there is no Other to find.
+      if(f.search){
+        return '<div class="full combo-field">' +
+                 '<label for="mission-' + f.key + '">' + escapeHtml(f.label) + '</label>' +
+                 '<div class="combo" id="combo-' + f.key + '">' +
+                   '<input ' + attrs + ' role="combobox" autocomplete="off" ' +
+                     'aria-expanded="false" aria-autocomplete="list" ' +
+                     'aria-controls="mission-' + f.key + '-list">' +
+                   '<button type="button" class="combo-btn" id="mission-' + f.key + '-toggle" ' +
+                     'tabindex="-1" aria-label="Show all ' + escapeHtml(f.label.toLowerCase()) + 's">' +
+                     '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+                       '<path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" ' +
+                         'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+                   '</button>' +
+                   '<ul class="combo-list" id="mission-' + f.key + '-list" role="listbox" ' +
+                     'aria-label="' + escapeHtml(f.label) + '" hidden></ul>' +
+                 '</div>' +
+               '</div>';
+      }
+
       // Picker first, free text second and hidden until Other is chosen, so
       // the common case is one tap and anything unlisted is still typeable.
       var opts = '<option value="">Select ' + escapeHtml(f.label.toLowerCase()) + '\u2026</option>';
@@ -2065,6 +2184,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   function fillMissionForm(){
     MISSION_KEYS.forEach(function(k){
       var field = missionField(k);
+      if(field && field.search){ syncCombo(field); return; }
       if(field && field.choices){ syncChoiceField(field); return; }
       var el = document.getElementById('mission-' + k);
       if(el && el.value !== mission[k]) el.value = mission[k];
@@ -2079,6 +2199,217 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
   // A value that is not on the list is not wrong - it just means Other, with
   // the free text field showing what was typed.
+  /* ---------- searchable pickers ---------- */
+
+  // Which combobox is open, and which of its rows is active. Kept outside the
+  // DOM because the list is rebuilt on every keystroke.
+  var comboOpen = null;
+  var comboActive = -1;
+
+  function comboParts(field){
+    return {
+      input: document.getElementById('mission-' + field.key),
+      list: document.getElementById('mission-' + field.key + '-list'),
+      toggle: document.getElementById('mission-' + field.key + '-toggle')
+    };
+  }
+
+  // Matches the rank someone types as "lt cdr" as readily as the full name.
+  function comboMatches(field, query){
+    var q = String(query || '').trim().toLowerCase();
+    var hit = function(value){
+      if(!q) return true;
+      if(value.toLowerCase().indexOf(q) !== -1) return true;
+      var short = field.alt ? field.alt(value) : '';
+      return !!short && short.toLowerCase().indexOf(q) !== -1;
+    };
+
+    if(field.groups){
+      return field.groups().map(function(g){
+        return { label:g.label, options:g.options.filter(hit) };
+      }).filter(function(g){ return g.options.length > 0; });
+    }
+    return [{ label:'', options:field.choices().filter(hit) }];
+  }
+
+  function renderCombo(field, query){
+    var parts = comboParts(field);
+    if(!parts.list) return [];
+
+    var groups = comboMatches(field, query);
+    var values = [];
+    var html = '';
+
+    groups.forEach(function(g){
+      if(g.label){
+        html += '<li class="combo-group" role="presentation">' + escapeHtml(g.label) + '</li>';
+      }
+      g.options.forEach(function(o){
+        var i = values.length;
+        var short = field.alt ? field.alt(o) : '';
+        values.push(o);
+        html += '<li class="combo-opt" role="option" id="mission-' + field.key + '-opt-' + i + '" ' +
+                  'data-value="' + escapeHtml(o) + '" aria-selected="false">' +
+                  escapeHtml(o) +
+                  (short ? '<span class="combo-short">' + escapeHtml(short) + '</span>' : '') +
+                '</li>';
+      });
+    });
+
+    if(!values.length){
+      // Never a dead end: what was typed is already saved, and the list says so.
+      html = '<li class="combo-empty" role="presentation">Nothing matches — what you typed is kept.</li>';
+    }
+
+    parts.list.innerHTML = html;
+    return values;
+  }
+
+  function openCombo(field, query){
+    var parts = comboParts(field);
+    if(!parts.input || !parts.list) return;
+    if(comboOpen && comboOpen !== field.key) closeCombo(missionField(comboOpen));
+
+    renderCombo(field, query);
+    parts.list.hidden = false;
+    parts.input.setAttribute('aria-expanded', 'true');
+    comboOpen = field.key;
+
+    // Decided on open, once the list has been measured: below by default, above
+    // when there is not room below and there is more of it above.
+    // visualViewport, not innerHeight: on iOS the keyboard shrinks the visual
+    // viewport while innerHeight stays put, so innerHeight would happily open
+    // the list behind the keyboard.
+    var seen = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    var field_rect = parts.input.getBoundingClientRect();
+    var needed = parts.list.offsetHeight + 8;
+    var below = seen - field_rect.bottom;
+    parts.list.classList.toggle('up', needed > below && field_rect.top > below);
+
+    setComboActive(field, -1);
+  }
+
+  function closeCombo(field){
+    if(!field) return;
+    var parts = comboParts(field);
+    if(!parts.input || !parts.list) return;
+    parts.list.hidden = true;
+    parts.input.setAttribute('aria-expanded', 'false');
+    parts.input.removeAttribute('aria-activedescendant');
+    if(comboOpen === field.key){ comboOpen = null; comboActive = -1; }
+  }
+
+  function setComboActive(field, index){
+    var parts = comboParts(field);
+    if(!parts.list) return;
+    var opts = parts.list.querySelectorAll('.combo-opt');
+    comboActive = index;
+
+    for(var i = 0; i < opts.length; i++){
+      var on = (i === index);
+      opts[i].classList.toggle('active', on);
+      opts[i].setAttribute('aria-selected', on ? 'true' : 'false');
+      if(on){
+        parts.input.setAttribute('aria-activedescendant', opts[i].id);
+        if(opts[i].scrollIntoView) opts[i].scrollIntoView({ block:'nearest' });
+      }
+    }
+    if(index < 0) parts.input.removeAttribute('aria-activedescendant');
+  }
+
+  function chooseCombo(field, value){
+    mission[field.key] = value;
+    // The type follows from the operation, so fill it in rather than making it
+    // something else to remember.
+    var derived = (field.key === 'name' && value) ? typeForOperation(value) : '';
+    if(derived) mission.type = derived;
+
+    saveWaypoints();
+    closeCombo(field);
+    fillMissionForm();
+    setFormNote('mission-setup',
+      derived ? 'Saved. Mission type set to ' + derived + '.' : 'Saved.', false);
+
+    var parts = comboParts(field);
+    if(parts.input) parts.input.focus();
+  }
+
+  function initCombo(field){
+    var parts = comboParts(field);
+    if(!parts.input || !parts.list || !parts.toggle) return;
+
+    parts.input.addEventListener('focus', function(){ openCombo(field, ''); });
+
+    parts.input.addEventListener('input', function(){
+      // Only when the field is actually being typed in. A value set in code
+      // fires input too, and a list opened by that has nobody to close it —
+      // it just sits there swallowing taps meant for whatever is underneath.
+      if(document.activeElement !== parts.input) return;
+      // The typed value is saved by the form's own input handler; this only
+      // narrows the list to match it.
+      openCombo(field, parts.input.value);
+    });
+
+    parts.input.addEventListener('keydown', function(e){
+      var open = comboOpen === field.key;
+      var opts = parts.list.querySelectorAll('.combo-opt');
+
+      if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+        e.preventDefault();
+        if(!open){ openCombo(field, parts.input.value); return; }
+        if(!opts.length) return;
+        var next = e.key === 'ArrowDown'
+          ? (comboActive + 1) % opts.length
+          : (comboActive <= 0 ? opts.length - 1 : comboActive - 1);
+        setComboActive(field, next);
+        return;
+      }
+
+      if(e.key === 'Enter'){
+        if(open && comboActive >= 0 && opts[comboActive]){
+          e.preventDefault();
+          chooseCombo(field, opts[comboActive].getAttribute('data-value'));
+        }else if(open){
+          closeCombo(field);
+        }
+        return;
+      }
+
+      // Escape closes the list and leaves the typed value alone, which is
+      // already saved.
+      if(e.key === 'Escape' && open){ e.stopPropagation(); closeCombo(field); }
+    });
+
+    parts.toggle.addEventListener('click', function(){
+      if(comboOpen === field.key){ closeCombo(field); return; }
+      openCombo(field, '');
+      parts.input.focus();
+    });
+
+    // mousedown would blur the input and close the list before the click
+    // landed, so the choice is taken here and the blur prevented.
+    parts.list.addEventListener('mousedown', function(e){
+      var row = e.target.closest ? e.target.closest('.combo-opt') : null;
+      if(!row) return;
+      e.preventDefault();
+      chooseCombo(field, row.getAttribute('data-value'));
+    });
+
+    parts.input.addEventListener('blur', function(){
+      // A tap on a row fires mousedown first, which has already chosen it.
+      setTimeout(function(){
+        if(document.activeElement !== parts.input) closeCombo(field);
+      }, 0);
+    });
+  }
+
+  function syncCombo(field){
+    var parts = comboParts(field);
+    if(!parts.input) return;
+    var value = mission[field.key] || '';
+    if(parts.input.value !== value) parts.input.value = value;
+  }
+
   function syncChoiceField(field){
     var select = document.getElementById('mission-' + field.key + '-select');
     var wrap = document.getElementById('mission-' + field.key + '-other');
@@ -2168,6 +2499,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
           ? 'Saved. Mission type set to ' + typeForOperation(select.value) + '.'
           : 'Saved.', false);
     });
+
+    MISSION_FIELDS.forEach(function(f){ if(f.search) initCombo(f); });
 
     document.getElementById('missionNowBtn').addEventListener('click', function(){
       var d = new Date();
